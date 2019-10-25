@@ -59,7 +59,19 @@ int g_Height = INIT_HEIGHT;
 
 PFN_vkGetInstanceProcAddr pfn_vkGetInstanceProcAddr = NULL;
 
+PFN_vkEnumerateInstanceLayerProperties pfn_vkEnumerateInstanceLayerProperties = NULL;
+PFN_vkEnumerateInstanceExtensionProperties pfn_vkEnumerateInstanceExtensionProperties = NULL;
+PFN_vkCreateInstance pfn_vkCreateInstance = NULL;
+
 PFN_vkGetDeviceProcAddr pfn_vkGetDeviceProcAddr = NULL;
+
+#ifdef DEBUG
+struct sUserData{
+    int dummy;
+};
+
+struct sUserData sUsrDt;
+#endif
 
 bool g_Quit = false;
 bool g_Ready = false;
@@ -73,6 +85,22 @@ bool g_MouseButton2 = false;
 bool g_MouseButton3 = false;
 
 uint32_t g_RequestedDeviceNum = 0;
+
+#ifdef DEBUG
+// !!! remember to change define if the number of elements in an array changes
+const char *g_InstanceLayers[] = {"VK_LAYER_KHRONOS_validation"};
+#define INST_ARR_NUM_OF_ELEMENTS 1
+#else
+// !!! remember to change define if the number of elements in an array changes
+const char *g_InstanceLayers[] = {0};
+#define INST_ARR_NUM_OF_ELEMENTS 0
+#endif
+
+char **g_InstanceLayersArray = NULL;
+uint32_t g_InstanceLayersArrayCount = 0;
+
+char **g_InstanceExtensionArray = NULL;
+uint32_t g_InstanceExtensionArrayCount = 0;
 
 /*
 ==============================
@@ -410,13 +438,161 @@ void shutdownVulkan()
 
 /*
 ==============================
+ maxValU();
+==============================
+*/
+
+uint32_t maxValU(uint32_t a, uint32_t b)
+{
+    if (a > b) return a;
+    return b;
+}
+
+/*
+==============================
+ isAvailable();
+==============================
+*/
+
+bool isAvailable(char **array, uint32_t count, const char *name)
+{
+
+    if (count<1) return false;
+
+    for (uint32_t i = 0; i < count; ++i)
+    {
+        if (strcmp(array[i],name)==0)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/*
+==============================
  initVulkan();
 ==============================
 */
 
-void initVulkan()
+bool initVulkan()
 {
 
+    //get global level fnc address
+
+    GET_GLOBAL_LEVEL_FUN_ADDR(vkEnumerateInstanceLayerProperties);
+    GET_GLOBAL_LEVEL_FUN_ADDR(vkEnumerateInstanceExtensionProperties);
+    GET_GLOBAL_LEVEL_FUN_ADDR(vkCreateInstance);
+
+    //enumerate instance layers
+    {
+        uint32_t layerCount = 0;
+
+        pfn_vkEnumerateInstanceLayerProperties(&layerCount,NULL);
+
+        printInfoMsg("number of instance layer properties available: %d\n",layerCount);
+
+        printInfoMsg("available instance layers: ");
+
+        if (layerCount>0)
+        {
+
+            printf("\n");
+
+            VkLayerProperties* layerProperties = NULL;
+
+            layerProperties = (VkLayerProperties*) malloc(layerCount * sizeof(VkLayerProperties));
+
+            if (layerProperties==NULL)
+            {
+                printErrorMsg("unable to allocate memory (1)\n");
+                return false;
+            }
+
+            pfn_vkEnumerateInstanceLayerProperties(&layerCount,layerProperties);
+
+            for ( uint32_t i = 0; i < layerCount; ++i)
+            {
+                printf("\t%s | %s\n", layerProperties[i].layerName, layerProperties[i].description);
+            }
+
+            if(INST_ARR_NUM_OF_ELEMENTS)
+            {
+
+                uint32_t numberOfEllementsInst = sizeof g_InstanceLayers / sizeof g_InstanceLayers[0];
+
+                printf("DEBUG: %d\n", numberOfEllementsInst);
+
+                if (numberOfEllementsInst)
+                {
+                    for (uint32_t i = 0 ; i < layerCount; ++i)
+                    {
+                        for (uint32_t a = 0; a < numberOfEllementsInst; ++a)
+                        {
+                            if (!strcmp(g_InstanceLayers[a], layerProperties[i].layerName))
+                            {
+                                char** pInstanceLayersArrayTmp = (char**) realloc(g_InstanceLayersArray, sizeof g_InstanceLayers[0] * (g_InstanceLayersArrayCount+1));
+
+                                if (!pInstanceLayersArrayTmp)
+                                {
+                                    printErrorMsg("unable to reallocate memory (1)\n");
+                                    free(layerProperties);
+                                    return false;
+                                }
+
+                                g_InstanceLayersArray = pInstanceLayersArrayTmp;
+
+                                g_InstanceLayersArray[g_InstanceLayersArrayCount] = (char*) malloc(strlen(layerProperties[i].layerName) + 1);
+
+                                if (g_InstanceLayersArray[g_InstanceLayersArrayCount] == NULL)
+                                {
+                                    printErrorMsg("unable to allocate memory (2)[%d]\n",g_InstanceLayersArrayCount);
+                                    free(layerProperties);
+                                    return false;
+                                }
+
+                                strcpy(g_InstanceLayersArray[g_InstanceLayersArrayCount], layerProperties[i].layerName);
+
+                                g_InstanceLayersArrayCount++;
+                            }
+
+                        }
+                    }
+                }
+
+            }
+
+            free(layerProperties);
+        }
+        else printf("none.\n");
+    }
+
+ #ifdef DEBUG
+    if (!isAvailable(g_InstanceLayersArray, g_InstanceLayersArrayCount, "VK_LAYER_KHRONOS_validation"))
+    {
+        printErrorMsg("requested layer not available: VK_LAYER_KHRONOS_validation\n");
+		return false;
+    }
+    else printInfoMsg("VK_LAYER_KHRONOS_validation available OK.\n");
+#endif
+
+    printInfoMsg("count of instance layers to be used: %d\n",g_InstanceLayersArrayCount);
+
+    if (g_InstanceLayersArrayCount>0)
+    {
+        printInfoMsg("list of instance layers to be used:\n");
+        for (uint32_t i = 0; i < g_InstanceLayersArrayCount; ++i)
+        {
+            printf("\t%s\n",g_InstanceLayersArray[i]);
+        }
+    }
+
+
+
+
+
+    return true;
 }
 
 /*
@@ -626,6 +802,26 @@ int main(int argc, char **argv)
     printInfoMsg("map window OK.\n");
 
 	xcb_flush (connection);
+
+    if (!initVulkan(window,connection))
+    {
+		printErrorMsg("initVulkan().\n");
+
+        shutdownVulkan();
+
+        free(atomReply);
+
+        xcb_destroy_window(connection, window);
+
+        xcb_disconnect(connection);
+
+        if (closeLibrary(libHandle))
+        {
+            printErrorMsg("close libvulkan.so.\n");
+        }
+
+		return 1;
+	}
 
     g_Ready = true;
 
