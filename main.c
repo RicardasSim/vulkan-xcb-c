@@ -1,7 +1,18 @@
+/*
+ * Learning Vulkan API
+ * Vulkan, XCB, C (C99)
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 
-int main()
+/*
+===================
+ main();
+===================
+*/
+
+int main(int argc, char **argv)
 {
 
 
