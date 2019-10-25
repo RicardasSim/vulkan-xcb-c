@@ -74,6 +74,7 @@ PFN_vkEnumeratePhysicalDevices pfn_vkEnumeratePhysicalDevices = NULL;
 PFN_vkGetPhysicalDeviceProperties pfn_vkGetPhysicalDeviceProperties = NULL;
 PFN_vkEnumerateDeviceLayerProperties pfn_vkEnumerateDeviceLayerProperties = NULL;
 PFN_vkEnumerateDeviceExtensionProperties pfn_vkEnumerateDeviceExtensionProperties = NULL;
+PFN_vkGetPhysicalDeviceQueueFamilyProperties pfn_vkGetPhysicalDeviceQueueFamilyProperties = NULL;
 
 PFN_vkGetDeviceProcAddr pfn_vkGetDeviceProcAddr = NULL;
 
@@ -899,6 +900,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     GET_INSTANCE_LEVEL_FUN_ADDR(vkGetPhysicalDeviceProperties);
     GET_INSTANCE_LEVEL_FUN_ADDR(vkEnumerateDeviceLayerProperties);
     GET_INSTANCE_LEVEL_FUN_ADDR(vkEnumerateDeviceExtensionProperties);
+    GET_INSTANCE_LEVEL_FUN_ADDR(vkGetPhysicalDeviceQueueFamilyProperties);
 
 #ifdef DEBUG
     {
@@ -1135,7 +1137,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
             if (extensionProperties==NULL)
             {
-                printErrorMsg("malloc extensions\n");
+                printErrorMsg("unable to allocate memory (9)\n");
                 return false;
             }
 
@@ -1170,8 +1172,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
                             if (!pDeviceExtensionsArrayTmp)
                             {
-                                //TODO: message text
-                                printErrorMsg("realloc (4)\n");
+                                printErrorMsg("unable to reallocate memory (4)\n");
                                 free(extensionProperties);
                                 return false;
                             }
@@ -1184,8 +1185,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
                             if (g_DeviceExtArray[g_DeviceExtArrayCount] == NULL)
                             {
-                                //TODO: message text
-                                printErrorMsg("malloc(5)[%d]\n",g_DeviceExtArrayCount);
+                                printErrorMsg("unable to allocate memory (10)[%d]\n",g_DeviceExtArrayCount);
                                 free(extensionProperties);
                                 return false;
                             }
@@ -1216,6 +1216,16 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         {
             printf("\t%s\n",g_DeviceExtArray[i]);
         }
+    }
+
+    //queue families
+    {
+        uint32_t queueFamilyCount = 0;
+
+        pfn_vkGetPhysicalDeviceQueueFamilyProperties(g_SelectedPhysicalDevice, &queueFamilyCount, NULL);
+
+        printInfoMsg("queueFamilyCount %d\n",queueFamilyCount);
+
     }
 
     return true;
