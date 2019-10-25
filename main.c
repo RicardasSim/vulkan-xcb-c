@@ -192,6 +192,26 @@ void* getPointerFromLib(void *libraryHandle, const char *fName)
 
 /*
 ==============================
+ getFncAddress();
+==============================
+*/
+
+int getFncAddress(void *libraryHandle)
+{
+
+    *(void **)(&pfn_vkGetInstanceProcAddr) = getPointerFromLib(libraryHandle, "vkGetInstanceProcAddr");
+
+    if (pfn_vkGetInstanceProcAddr == NULL)
+    {
+        printErrorMsg("cannot get vkGetInstanceProcAddr address\n");
+        return false;
+    }
+
+    return true;
+}
+
+/*
+==============================
  shutdownVulkan();
 ==============================
 */
