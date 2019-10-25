@@ -73,6 +73,7 @@ PFN_vkDestroySurfaceKHR pfn_vkDestroySurfaceKHR = NULL;
 PFN_vkEnumeratePhysicalDevices pfn_vkEnumeratePhysicalDevices = NULL;
 PFN_vkGetPhysicalDeviceProperties pfn_vkGetPhysicalDeviceProperties = NULL;
 PFN_vkEnumerateDeviceLayerProperties pfn_vkEnumerateDeviceLayerProperties = NULL;
+PFN_vkEnumerateDeviceExtensionProperties pfn_vkEnumerateDeviceExtensionProperties = NULL;
 
 PFN_vkGetDeviceProcAddr pfn_vkGetDeviceProcAddr = NULL;
 
@@ -135,6 +136,15 @@ const char *g_DeviceLayers[] = {0};
 
 char** g_DeviceLayersArray = NULL;
 uint32_t g_DeviceLayersArrayCount = 0;
+
+#ifdef DEBUG
+const char *g_DeviceExtensions[] = {"VK_KHR_swapchain"};
+#else
+const char *g_DeviceExtensions[] = {"VK_KHR_swapchain"};
+#endif
+
+char** g_DeviceExtArray = NULL;
+uint32_t g_DeviceExtArrayCount = 0;
 
 /*
 ==============================
@@ -479,6 +489,22 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
 
 void shutdownVulkan()
 {
+    if (g_DeviceExtArrayCount)
+    {
+        for (uint32_t i = 0; i < g_DeviceExtArrayCount; ++i)
+        {
+            printInfoMsg("free device extensions array [%d]\n",i);
+            free(g_DeviceExtArray[i]);
+        }
+    }
+
+    g_DeviceExtArrayCount = 0;
+
+    if (g_DeviceExtArray)
+    {
+        free(g_DeviceExtArray);
+        printInfoMsg("free g_DeviceExtArray\n");
+    }
 
     if (g_DeviceLayersArrayCount)
     {
@@ -872,6 +898,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     GET_INSTANCE_LEVEL_FUN_ADDR(vkEnumeratePhysicalDevices);
     GET_INSTANCE_LEVEL_FUN_ADDR(vkGetPhysicalDeviceProperties);
     GET_INSTANCE_LEVEL_FUN_ADDR(vkEnumerateDeviceLayerProperties);
+    GET_INSTANCE_LEVEL_FUN_ADDR(vkEnumerateDeviceExtensionProperties);
 
 #ifdef DEBUG
     {
@@ -1077,6 +1104,119 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         else printf("none.\n");
 	}
 
+    printInfoMsg("count of device layers to be used: %d\n",g_DeviceLayersArrayCount);
+
+    if (g_DeviceLayersArrayCount>0)
+    {
+        printInfoMsg("list of device layers to be used:\n");
+        for (uint32_t i = 0; i < g_DeviceLayersArrayCount; ++i)
+        {
+            printf("\t%s\n",g_DeviceLayersArray[i]);
+        }
+    }
+
+	//enumerate device extensions
+    {
+
+        uint32_t extensionCount = 0;
+
+        pfn_vkEnumerateDeviceExtensionProperties(g_SelectedPhysicalDevice, NULL, &extensionCount, NULL);
+
+        printInfoMsg("available device extensions count: %d\n", extensionCount);
+
+        printInfoMsg("available device extensions: ");
+
+        if (extensionCount>0)
+        {
+            printf("\n");
+
+            VkExtensionProperties* extensionProperties =
+            (VkExtensionProperties*) malloc(extensionCount * sizeof(VkExtensionProperties));
+
+            if (extensionProperties==NULL)
+            {
+                printErrorMsg("malloc extensions\n");
+                return false;
+            }
+
+            pfn_vkEnumerateDeviceExtensionProperties(g_SelectedPhysicalDevice,
+                                                        NULL,
+                                                        &extensionCount,
+                                                        extensionProperties);
+
+            for (uint32_t i=0 ; i < extensionCount; ++i)
+            {
+                printf("\t%s\n", extensionProperties[i].extensionName);
+            }
+
+            uint32_t numberOfEllements = 0;
+
+            numberOfEllements = sizeof g_DeviceExtensions / sizeof g_DeviceExtensions[0];
+
+            if(numberOfEllements == 1 && g_DeviceExtensions[0] == NULL) numberOfEllements = 0;
+
+            if (numberOfEllements)
+            {
+
+                for (uint32_t a = 0; a < numberOfEllements; ++a)
+                {
+                    for (uint32_t i = 0 ; i < extensionCount; ++i)
+                    {
+                        if (!strcmp(g_DeviceExtensions[a], extensionProperties[i].extensionName))
+                        {
+
+                            char** pDeviceExtensionsArrayTmp = (char**) realloc(g_DeviceExtArray,
+                                    sizeof g_DeviceExtensions[0] * (g_DeviceExtArrayCount+1));
+
+                            if (!pDeviceExtensionsArrayTmp)
+                            {
+                                //TODO: message text
+                                printErrorMsg("realloc (4)\n");
+                                free(extensionProperties);
+                                return false;
+                            }
+
+                            g_DeviceExtArray = pDeviceExtensionsArrayTmp;
+
+                            g_DeviceExtArray[g_DeviceExtArrayCount] =
+                                (char*) malloc(strlen(extensionProperties[i].extensionName) + 1);
+
+
+                            if (g_DeviceExtArray[g_DeviceExtArrayCount] == NULL)
+                            {
+                                //TODO: message text
+                                printErrorMsg("malloc(5)[%d]\n",g_DeviceExtArrayCount);
+                                free(extensionProperties);
+                                return false;
+                            }
+
+                            strcpy(g_DeviceExtArray[g_DeviceExtArrayCount],
+                                extensionProperties[i].extensionName);
+
+                            g_DeviceExtArrayCount++;
+
+                        }
+                    }
+                }
+
+
+            }
+           free(extensionProperties);
+        }
+        else printf("none.\n");
+
+	}
+
+    printInfoMsg("count of device extensions to be used: %d\n",g_DeviceExtArrayCount);
+
+    if (g_DeviceExtArrayCount>0)
+    {
+        printInfoMsg("list of device extensions to be used:\n");
+        for (uint32_t i = 0; i < g_DeviceExtArrayCount; ++i)
+        {
+            printf("\t%s\n",g_DeviceExtArray[i]);
+        }
+    }
 
     return true;
 }
