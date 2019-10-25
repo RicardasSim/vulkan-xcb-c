@@ -332,6 +332,7 @@ int main(int argc, char **argv)
 {
 
     void *libHandle = NULL;
+    char *envVar;
 
     if(!parseOptions(argc, argv))
     {
@@ -358,6 +359,17 @@ int main(int argc, char **argv)
             printErrorMsg("close libvulkan.so.\n");
         }
         return -1;
+    }
+
+    envVar = getenv("VK_LAYER_PATH");
+
+    if (envVar == NULL)
+    {
+        printWarningMsg("environment variable VK_LAYER_PATH is not set.\n");
+    }
+    else
+    {
+        printInfoMsg("VK_LAYER_PATH: %s\n",envVar);
     }
 
 
