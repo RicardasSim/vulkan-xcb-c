@@ -87,13 +87,9 @@ bool g_MouseButton3 = false;
 uint32_t g_RequestedDeviceNum = 0;
 
 #ifdef DEBUG
-// !!! remember to change define if the number of elements in an array changes
 const char *g_InstanceLayers[] = {"VK_LAYER_KHRONOS_validation"};
-#define INST_ARR_NUM_OF_ELEMENTS 1
 #else
-// !!! remember to change define if the number of elements in an array changes
 const char *g_InstanceLayers[] = {0};
-#define INST_ARR_NUM_OF_ELEMENTS 0
 #endif
 
 char **g_InstanceLayersArray = NULL;
@@ -517,50 +513,45 @@ bool initVulkan()
                 printf("\t%s | %s\n", layerProperties[i].layerName, layerProperties[i].description);
             }
 
-            if(INST_ARR_NUM_OF_ELEMENTS)
+            uint32_t numberOfEllementsInst = sizeof g_InstanceLayers / sizeof g_InstanceLayers[0];
+
+            if(numberOfEllementsInst == 1 && g_InstanceLayers[0] == NULL) numberOfEllementsInst = 0;
+
+            if (numberOfEllementsInst)
             {
-
-                uint32_t numberOfEllementsInst = sizeof g_InstanceLayers / sizeof g_InstanceLayers[0];
-
-                printf("DEBUG: %d\n", numberOfEllementsInst);
-
-                if (numberOfEllementsInst)
+                for (uint32_t i = 0 ; i < layerCount; ++i)
                 {
-                    for (uint32_t i = 0 ; i < layerCount; ++i)
+                    for (uint32_t a = 0; a < numberOfEllementsInst; ++a)
                     {
-                        for (uint32_t a = 0; a < numberOfEllementsInst; ++a)
+                        if (!strcmp(g_InstanceLayers[a], layerProperties[i].layerName))
                         {
-                            if (!strcmp(g_InstanceLayers[a], layerProperties[i].layerName))
+                            char** pInstanceLayersArrayTmp = (char**) realloc(g_InstanceLayersArray, sizeof g_InstanceLayers[0] * (g_InstanceLayersArrayCount+1));
+
+                            if (!pInstanceLayersArrayTmp)
                             {
-                                char** pInstanceLayersArrayTmp = (char**) realloc(g_InstanceLayersArray, sizeof g_InstanceLayers[0] * (g_InstanceLayersArrayCount+1));
-
-                                if (!pInstanceLayersArrayTmp)
-                                {
-                                    printErrorMsg("unable to reallocate memory (1)\n");
-                                    free(layerProperties);
-                                    return false;
-                                }
-
-                                g_InstanceLayersArray = pInstanceLayersArrayTmp;
-
-                                g_InstanceLayersArray[g_InstanceLayersArrayCount] = (char*) malloc(strlen(layerProperties[i].layerName) + 1);
-
-                                if (g_InstanceLayersArray[g_InstanceLayersArrayCount] == NULL)
-                                {
-                                    printErrorMsg("unable to allocate memory (2)[%d]\n",g_InstanceLayersArrayCount);
-                                    free(layerProperties);
-                                    return false;
-                                }
-
-                                strcpy(g_InstanceLayersArray[g_InstanceLayersArrayCount], layerProperties[i].layerName);
-
-                                g_InstanceLayersArrayCount++;
+                                printErrorMsg("unable to reallocate memory (1)\n");
+                                free(layerProperties);
+                                return false;
                             }
 
+                            g_InstanceLayersArray = pInstanceLayersArrayTmp;
+
+                            g_InstanceLayersArray[g_InstanceLayersArrayCount] = (char*) malloc(strlen(layerProperties[i].layerName) + 1);
+
+                            if (g_InstanceLayersArray[g_InstanceLayersArrayCount] == NULL)
+                            {
+                                printErrorMsg("unable to allocate memory (2)[%d]\n",g_InstanceLayersArrayCount);
+                                free(layerProperties);
+                                return false;
+                            }
+
+                            strcpy(g_InstanceLayersArray[g_InstanceLayersArrayCount], layerProperties[i].layerName);
+
+                            g_InstanceLayersArrayCount++;
                         }
+
                     }
                 }
-
             }
 
             free(layerProperties);
