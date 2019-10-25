@@ -153,6 +153,23 @@ void* openLibrary(const char *libraryName)
 
 /*
 ==============================
+ closeLibrary();
+==============================
+*/
+
+int closeLibrary(void *libraryHandle)
+{
+    if (dlclose(libraryHandle))
+    {
+        printErrorMsg("%s\n", dlerror());
+        return 1;
+    }
+
+    return 0;
+}
+
+/*
+==============================
  shutdownVulkan();
 ==============================
 */
