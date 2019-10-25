@@ -3,6 +3,10 @@
  * Vulkan, XCB, C (C99)
  */
 
+#define OPTPARSE_IMPLEMENTATION
+#define OPTPARSE_API static
+#include "optparse.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
