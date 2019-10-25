@@ -435,7 +435,35 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
 
 void shutdownVulkan()
 {
+    if (g_InstanceExtensionArrayCount)
+    {
+        for ( uint32_t i = 0; i < g_InstanceExtensionArrayCount; ++i)
+        {
+            free(g_InstanceExtensionArray[i]);
+            printInfoMsg("free instance extensions array [%d]\n",i);
+        }
+    }
 
+    if (g_InstanceExtensionArray)
+    {
+        free(g_InstanceExtensionArray);
+        printInfoMsg("free g_InstanceExtensionArray\n");
+    }
+
+	if (g_InstanceLayersArrayCount)
+    {
+        for ( uint32_t i = 0; i < g_InstanceLayersArrayCount; ++i)
+        {
+            free(g_InstanceLayersArray[i]);
+            printInfoMsg("free instance layers array [%d]\n",i);
+        }
+    }
+
+	if (g_InstanceLayersArray)
+    {
+		free(g_InstanceLayersArray);
+		printInfoMsg("free g_InstanceLayersArray\n");
+	}
 }
 
 /*
@@ -1077,6 +1105,8 @@ int main(int argc, char **argv)
         }
 
     }
+
+    shutdownVulkan();
 
 	free(atomReply);
     xcb_destroy_window(connection, window);
