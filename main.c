@@ -100,6 +100,24 @@ void printWarningMsg(const char *format, ...)
 
 /*
 ==============================
+ printHelp();
+==============================
+*/
+
+static void printHelp(void)
+{
+
+    #define LN(s) s "\n"
+
+    printf( LN("usage: program [options]")
+            LN("")
+            LN("optional arguments:")
+            LN("  -d, --devicenum=num   Vulkan device number `num`")
+            LN("  -h, --help            display help message and exit"));
+}
+
+/*
+==============================
  parseOptions();
 ==============================
 */
