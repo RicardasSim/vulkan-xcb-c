@@ -400,7 +400,8 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
         }
     }
 
-    printf("\nMessage ID: %d, Message Name: %s, Message: %s\n", pCallbackData->messageIdNumber, pCallbackData->pMessageIdName, pCallbackData->pMessage);
+    printf("\nMessage ID: %d, Message Name: %s, Message: %s\n", pCallbackData->messageIdNumber,
+                                        pCallbackData->pMessageIdName, pCallbackData->pMessage);
 
     if (pCallbackData->objectCount > 0)
     {
@@ -423,8 +424,12 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
 
         for (uint32_t i = 0; i < pCallbackData->queueLabelCount; ++i)
         {
-            printf("Queue Label[%d] - Name: %s Color: {%f, %f, %f, %f}\n", i, pCallbackData->pQueueLabels[i].pLabelName, pCallbackData->pQueueLabels[i].color[0],
-                pCallbackData->pQueueLabels[i].color[1], pCallbackData->pQueueLabels[i].color[2], pCallbackData->pQueueLabels[i].color[3]);
+            printf("Queue Label[%d] - Name: %s Color: {%f, %f, %f, %f}\n", i,
+                                    pCallbackData->pQueueLabels[i].pLabelName,
+                                    pCallbackData->pQueueLabels[i].color[0],
+                                    pCallbackData->pQueueLabels[i].color[1],
+                                    pCallbackData->pQueueLabels[i].color[2],
+                                    pCallbackData->pQueueLabels[i].color[3]);
         }
     }
 
@@ -434,8 +439,12 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
 
         for (uint32_t i = 0; i < pCallbackData->cmdBufLabelCount; ++i)
         {
-            printf("Buf Label[%d] - Name: %s Color: {%f, %f, %f, %f}\n", i, pCallbackData->pCmdBufLabels[i].pLabelName, pCallbackData->pCmdBufLabels[i].color[0],
-                pCallbackData->pCmdBufLabels[i].color[1], pCallbackData->pCmdBufLabels[i].color[2], pCallbackData->pCmdBufLabels[i].color[3]);
+            printf("Buf Label[%d] - Name: %s Color: {%f, %f, %f, %f}\n", i,
+                                    pCallbackData->pCmdBufLabels[i].pLabelName,
+                                    pCallbackData->pCmdBufLabels[i].color[0],
+                                    pCallbackData->pCmdBufLabels[i].color[1],
+                                    pCallbackData->pCmdBufLabels[i].color[2],
+                                    pCallbackData->pCmdBufLabels[i].color[3]);
         }
     }
 
