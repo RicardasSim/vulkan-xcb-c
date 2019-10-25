@@ -47,6 +47,12 @@ if (pfn_##name == NULL) \
     return false; \
 }
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+#define INIT_WIDTH 800
+#define INIT_HEIGHT 600
 
 PFN_vkGetInstanceProcAddr pfn_vkGetInstanceProcAddr = NULL;
 
