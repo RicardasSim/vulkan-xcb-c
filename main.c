@@ -185,7 +185,7 @@ static void printHelp(void)
     printf( LN("usage: program [options]")
             LN("")
             LN("optional arguments:")
-            LN("  -d, --devicenum=num   Vulkan device number `num`")
+            LN("  -d, --devicenum=num   Vulkan device number `num`, first 1")
             LN("  -h, --help            display help message and exit"));
 }
 
@@ -255,10 +255,13 @@ bool parseOptions(int argc, char **argv)
                     if (isNumberPositiveAndNotNull(options.optarg, &argNumber))
                     {
                         printf("is valid, number %d\n",argNumber);
-                        g_RequestedDeviceNum = argNumber - 1;
+                        g_RequestedDeviceNum = argNumber;
                     }
-                    else printf("not valid\n");
-
+                    else
+                    {
+                        printErrorMsg("requested physical device parameter not valid\n");
+                        return false;
+                    }
                     break;
 
                 case 'h':
@@ -933,7 +936,32 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     }
 
 
+    if(g_RequestedDeviceNum > g_PhysicalDeviceCount)
+    {
+        printErrorMsg("there is no physical device with such number.\n");
+        printf("\tyou have requested physical device number: %d\n", g_RequestedDeviceNum);
+        if(g_PhysicalDeviceCount == 1)
+        {
+            printf("\tbut there is only %d physical device found\n", g_PhysicalDeviceCount);
+            printf("\trequested physical device number on this mashine can be only 1\n");
+        }
+        else
+        {
+            printf("\trequested physical device number on this mashine should be within range 1-%d\n",
+                g_PhysicalDeviceCount);
+            printf("\tbut there is only %d physical devices found\n", g_PhysicalDeviceCount);
+        }
 
+
+        return false;
+    }
+
+    printInfoMsg("requested physical device number: %d\n", g_RequestedDeviceNum);
+
+    if (g_RequestedDeviceNum > 0)
+        g_SelectedPhysicalDevice = g_PhysicalDevices[g_RequestedDeviceNum-1];
+    else
+         g_SelectedPhysicalDevice = g_PhysicalDevices[0];
 
     return true;
 }
