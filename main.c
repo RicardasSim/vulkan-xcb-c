@@ -850,18 +850,18 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
         if (result != VK_SUCCESS)
         {
-	        printErrorMsg("failed to query the number of physical devices present.\n");
-	        return false;
-	    }
+            printErrorMsg("failed to query the number of physical devices present.\n");
+            return false;
+        }
 
-	    // there has to be at least one device present
-	    if (g_PhysicalDeviceCount == 0)
+        // there has to be at least one device present
+        if (g_PhysicalDeviceCount == 0)
         {
-	        printErrorMsg("couldn't detect any device present with Vulkan support.\n");
-	        return false;
-	    }
+            printErrorMsg("couldn't detect any device present with Vulkan support.\n");
+            return false;
+        }
 
-	    printInfoMsg("number of Vulkan physical devices found: %d\n", g_PhysicalDeviceCount);
+        printInfoMsg("number of Vulkan physical devices found: %d\n", g_PhysicalDeviceCount);
 
     }
 
@@ -1240,7 +1240,7 @@ int main(int argc, char **argv)
 
                     break;
 
-				default:
+                default:
                     break;
 
             }
