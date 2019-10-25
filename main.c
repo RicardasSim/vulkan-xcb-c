@@ -170,6 +170,28 @@ int closeLibrary(void *libraryHandle)
 
 /*
 ==============================
+ getPointerFromLib();
+==============================
+*/
+
+void* getPointerFromLib(void *libraryHandle, const char *fName)
+{
+
+    void *p = dlsym(libraryHandle, fName);
+
+    char *error = dlerror();
+
+    if (error != NULL)
+    {
+        printErrorMsg("%s\n", error);
+        return NULL;
+    }
+
+    return p;
+}
+
+/*
+==============================
  shutdownVulkan();
 ==============================
 */
