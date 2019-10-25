@@ -608,7 +608,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
                     {
                         if (!strcmp(g_InstanceLayers[a], layerProperties[i].layerName))
                         {
-                            char **pInstanceLayersArrayTmp = (char**) realloc(g_InstanceLayersArray, sizeof g_InstanceLayers[0] * (g_InstanceLayersArrayCount+1));
+                            char **pInstanceLayersArrayTmp =
+                                (char**) realloc(g_InstanceLayersArray, sizeof g_InstanceLayers[0] * (g_InstanceLayersArrayCount+1));
 
                             if (!pInstanceLayersArrayTmp)
                             {
@@ -678,7 +679,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
             printf("\n");
 
-            VkExtensionProperties *extensionProperties = (VkExtensionProperties*) malloc(extensionCount * sizeof(VkExtensionProperties));
+            VkExtensionProperties *extensionProperties =
+                (VkExtensionProperties*) malloc(extensionCount * sizeof(VkExtensionProperties));
 
             if (extensionProperties==NULL)
             {
@@ -717,7 +719,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
                             g_InstanceExtensionArray = pInstanceExtensionArrayTmp;
 
-                            g_InstanceExtensionArray[g_InstanceExtensionArrayCount] = (char*) malloc(strlen(extensionProperties[i].extensionName) + 1);
+                            g_InstanceExtensionArray[g_InstanceExtensionArrayCount] =
+                                (char*) malloc(strlen(extensionProperties[i].extensionName) + 1);
 
                             if (g_InstanceExtensionArray[g_InstanceExtensionArrayCount] == NULL)
                             {
@@ -790,10 +793,12 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         instanceCreateInfo.flags = 0;
         instanceCreateInfo.pApplicationInfo = &applicationInfo;
         instanceCreateInfo.enabledLayerCount = g_InstanceLayersArrayCount;
-        if (g_InstanceLayersArrayCount) instanceCreateInfo.ppEnabledLayerNames = (const char* const*) g_InstanceLayersArray;
+        if (g_InstanceLayersArrayCount)
+            instanceCreateInfo.ppEnabledLayerNames = (const char* const*) g_InstanceLayersArray;
         else instanceCreateInfo.ppEnabledLayerNames = NULL;
         instanceCreateInfo.enabledExtensionCount = g_InstanceExtensionArrayCount;
-        if (g_InstanceExtensionArrayCount) instanceCreateInfo.ppEnabledExtensionNames = (const char* const*) g_InstanceExtensionArray;
+        if (g_InstanceExtensionArrayCount)
+            instanceCreateInfo.ppEnabledExtensionNames = (const char* const*) g_InstanceExtensionArray;
         else instanceCreateInfo.ppEnabledExtensionNames = NULL;
 
        	VkResult result = pfn_vkCreateInstance(&instanceCreateInfo, NULL, &g_Instance);
@@ -802,7 +807,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
         if (result != VK_SUCCESS)
         {
-            if (result == VK_ERROR_INCOMPATIBLE_DRIVER) printErrorMsg("failed to create Vulkan instance, can't find a compatible Vulkan driver.\n");
+            if (result == VK_ERROR_INCOMPATIBLE_DRIVER)
+                printErrorMsg("failed to create Vulkan instance, can't find a compatible Vulkan driver.\n");
             else printErrorMsg("failed to create Vulkan instance\n");
 
             return false;
