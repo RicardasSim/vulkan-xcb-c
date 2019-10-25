@@ -331,6 +331,18 @@ void initVulkan()
 int main(int argc, char **argv)
 {
 
+    if(!parseOptions(argc, argv))
+    {
+        return -1;
+    }
+
+    printInfoMsg("Starting a program.\n");
+
+
+
+
+
+    printInfoMsg("Bye bye !\n");
 
     return 0;
 }
