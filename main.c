@@ -54,10 +54,23 @@ if (pfn_##name == NULL) \
 #define INIT_WIDTH 800
 #define INIT_HEIGHT 600
 
+int g_Width = INIT_WIDTH;
+int g_Height = INIT_HEIGHT;
+
 PFN_vkGetInstanceProcAddr pfn_vkGetInstanceProcAddr = NULL;
 
 PFN_vkGetDeviceProcAddr pfn_vkGetDeviceProcAddr = NULL;
 
+bool g_Quit = false;
+bool g_Ready = false;
+
+int g_MousePosX = 0;
+int g_MousePosY = 0;
+int g_MousePosOldX = 0;
+int g_MousePosOldY = 0;
+bool g_MouseButton1 = false;
+bool g_MouseButton2 = false;
+bool g_MouseButton3 = false;
 
 /*
 ==============================
@@ -333,6 +346,20 @@ int main(int argc, char **argv)
 
     void *libHandle = NULL;
     char *envVar;
+    xcb_connection_t *connection = NULL;
+    int screenNum = 0;
+    xcb_screen_iterator_t screenIter;
+    xcb_screen_t *screen = NULL;
+    xcb_window_t window = 0;
+ 	uint32_t mask;
+	uint32_t values[2];
+    xcb_generic_error_t *error;
+ 	xcb_void_cookie_t cookieWindow;
+	xcb_void_cookie_t cookieMap;
+    xcb_intern_atom_reply_t *atomReply = NULL;
+    char *title = "Linux Vulkan XCB C Sandbox";
+    xcb_generic_event_t *event;
+    xcb_key_press_event_t *keyPressEvent;
 
     if(!parseOptions(argc, argv))
     {
@@ -358,6 +385,7 @@ int main(int argc, char **argv)
         {
             printErrorMsg("close libvulkan.so.\n");
         }
+
         return -1;
     }
 
@@ -372,7 +400,284 @@ int main(int argc, char **argv)
         printInfoMsg("VK_LAYER_PATH: %s\n",envVar);
     }
 
+    connection = xcb_connect(NULL, &screenNum);
 
+	if (connection == NULL)
+    {
+		printErrorMsg("can't connect to an X server.\n");
+
+        if (closeLibrary(libHandle))
+        {
+            printErrorMsg("close libvulkan.so.\n");
+        }
+
+        return 1;
+	}
+
+    printInfoMsg("connect to an X server OK.\n");
+
+    screenIter = xcb_setup_roots_iterator(xcb_get_setup(connection));
+
+	while (screenNum-- > 0)
+    {
+		xcb_screen_next( &screenIter );
+	}
+
+	screen = screenIter.data;
+
+	if (!screen)
+    {
+		printErrorMsg("can't get the current screen.\n");
+
+        xcb_disconnect(connection);
+
+        if (closeLibrary(libHandle))
+        {
+            printErrorMsg("close libvulkan.so.\n");
+        }
+
+        return 1;
+	}
+
+    printInfoMsg("get current screen OK.\n");
+
+    window = xcb_generate_id(connection);
+
+	mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
+
+    values[0] = screen->black_pixel;
+
+	values[1] = XCB_EVENT_MASK_EXPOSURE |
+                    XCB_EVENT_MASK_RESIZE_REDIRECT |
+                    XCB_EVENT_MASK_KEY_PRESS |
+                    XCB_EVENT_MASK_KEY_RELEASE |
+                    XCB_EVENT_MASK_POINTER_MOTION |
+                    XCB_EVENT_MASK_BUTTON_PRESS |
+                    XCB_EVENT_MASK_BUTTON_RELEASE;
+
+	cookieWindow = xcb_create_window_checked(connection,
+                                XCB_COPY_FROM_PARENT,
+                                window,
+                                screen->root,
+                                0, 0, g_Width, g_Height,
+                                0,
+                                XCB_WINDOW_CLASS_INPUT_OUTPUT,
+                                screen->root_visual,
+                                mask,
+                                values);
+
+ 	error = xcb_request_check (connection, cookieWindow);
+
+	if (error)
+    {
+		printErrorMsg("can't create window : %d\n", error->error_code);
+
+		xcb_disconnect(connection);
+
+        if (closeLibrary(libHandle))
+        {
+            printErrorMsg("close libvulkan.so.\n");
+        }
+
+		return 1;
+	}
+
+    printInfoMsg("create window OK.\n");
+
+ 	/* Magic code that will send notification when window is destroyed */
+	xcb_intern_atom_cookie_t cookie1 = xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
+	xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(connection, cookie1, 0);
+	xcb_intern_atom_cookie_t cookie2 = xcb_intern_atom(connection, 0, 16,"WM_DELETE_WINDOW");
+	atomReply = xcb_intern_atom_reply(connection, cookie2, 0);
+	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, (*reply).atom, 4, 32, 1, &(*atomReply).atom);
+	free(reply);
+
+    /* set title of the window */
+    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, strlen (title), title);
+
+    cookieMap = xcb_map_window_checked(connection, window);
+
+	error = xcb_request_check(connection, cookieMap);
+
+	if (error)
+    {
+		printErrorMsg("can't map window : %d\n", error->error_code);
+
+        free(atomReply);
+
+        xcb_destroy_window(connection, window);
+
+		xcb_disconnect(connection);
+
+        if (closeLibrary(libHandle))
+        {
+            printErrorMsg("close libvulkan.so.\n");
+        }
+
+		return 1;
+	}
+
+    printInfoMsg("map window OK.\n");
+
+	xcb_flush (connection);
+
+    g_Ready = true;
+
+    printInfoMsg("Ready !\n");
+
+  	while (!g_Quit)
+	{
+
+        event = xcb_poll_for_event(connection);
+        xcb_resize_request_event_t* resizeRequestEvent;
+        xcb_button_press_event_t* buttonPressEvent;
+        xcb_motion_notify_event_t* motionNotify;
+
+		if (event)
+        {
+            switch (event->response_type & ~0x80)
+            {
+
+                case XCB_EXPOSE:
+
+					xcb_flush(connection);
+
+                    break;
+
+				case XCB_CLIENT_MESSAGE:
+
+                    if ((*(xcb_client_message_event_t*)event).data.data32[0] == (*atomReply).atom)
+                    {
+                        g_Quit = true;
+                    }
+
+                    break;
+
+                case XCB_RESIZE_REQUEST:
+
+                    resizeRequestEvent = (xcb_resize_request_event_t*) event;
+
+                    if (resizeRequestEvent->width != g_Width || resizeRequestEvent->height != g_Height)
+                    {
+                        g_Ready = false;
+
+                        printInfoMsg("resize is not yet supported !\n");
+                    }
+
+                    break;
+
+				case XCB_KEY_PRESS:
+
+                    keyPressEvent = (xcb_key_press_event_t*)event;
+
+                    switch (keyPressEvent->detail)
+                    {
+                        case 0x9:	//Esc
+
+                            g_Quit = true;
+
+                            break;
+
+                        case 0x18:	//Q
+
+                            if (keyPressEvent->state & XCB_MOD_MASK_CONTROL) g_Quit = true;	//Ctrl+Q
+
+                            break;
+
+                        default:
+                            break;
+					}
+
+                    break;
+
+
+                case XCB_MOTION_NOTIFY:
+
+                    motionNotify = (xcb_motion_notify_event_t*)event;
+
+                    g_MousePosX = motionNotify->event_x;
+                    g_MousePosY = motionNotify->event_y;
+
+                    break;
+
+                case XCB_BUTTON_PRESS:
+
+                    buttonPressEvent = (xcb_button_press_event_t*)event;
+
+                    switch (buttonPressEvent->detail)
+                    {
+                        case XCB_BUTTON_INDEX_1:
+
+                            g_MouseButton1 = true;
+
+                            g_MousePosX = buttonPressEvent->event_x;
+                            g_MousePosY = buttonPressEvent->event_y;
+
+                            break;
+
+                        case XCB_BUTTON_INDEX_2:
+
+                            g_MouseButton2 = true;
+
+                            break;
+
+                        case XCB_BUTTON_INDEX_3:
+
+                            g_MouseButton3 = true;
+
+                            break;
+
+                        default:
+                            break;
+
+                    }
+
+                    break;
+
+                case XCB_BUTTON_RELEASE:
+
+                    buttonPressEvent = (xcb_button_press_event_t*)event;
+
+                    switch (buttonPressEvent->detail)
+                    {
+                        case XCB_BUTTON_INDEX_1:
+
+                            g_MouseButton1 = false;
+
+                            break;
+
+                        case XCB_BUTTON_INDEX_2:
+
+                            g_MouseButton2 = false;
+
+                            break;
+
+                        case XCB_BUTTON_INDEX_3:
+
+                            g_MouseButton3 = false;
+
+                            break;
+
+                        default:
+                            break;
+
+                    }
+
+                    break;
+
+				default:
+                    break;
+
+            }
+
+            free (event);
+
+        }
+    }
+
+	free(atomReply);
+    xcb_destroy_window(connection, window);
+	xcb_disconnect(connection);
 
     if (closeLibrary(libHandle))
     {
