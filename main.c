@@ -907,17 +907,15 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     }
 
     //enumerate physical devices (2)
- 	{
+    {
+        VkResult result = pfn_vkEnumeratePhysicalDevices(g_Instance, &g_PhysicalDeviceCount, g_PhysicalDevices);
 
-		VkResult result = pfn_vkEnumeratePhysicalDevices(g_Instance, &g_PhysicalDeviceCount, g_PhysicalDevices);
-
-		if (result != VK_SUCCESS)
+        if (result != VK_SUCCESS)
         {
             printErrorMsg("faied to enumerate physical devices present.\n");
-			return false;
-		}
-
-	}
+            return false;
+        }
+    }
 
     for (uint32_t i = 0; i < g_PhysicalDeviceCount; ++i)
     {
@@ -967,6 +965,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         g_SelectedPhysicalDevice = g_PhysicalDevices[g_RequestedDeviceNum-1];
     else
         g_SelectedPhysicalDevice = g_PhysicalDevices[0];
+
+    //enumerate device layers
 
 
 
