@@ -72,6 +72,7 @@ PFN_vkCreateXcbSurfaceKHR pfn_vkCreateXcbSurfaceKHR = NULL;
 PFN_vkDestroySurfaceKHR pfn_vkDestroySurfaceKHR = NULL;
 PFN_vkEnumeratePhysicalDevices pfn_vkEnumeratePhysicalDevices = NULL;
 PFN_vkGetPhysicalDeviceProperties pfn_vkGetPhysicalDeviceProperties = NULL;
+PFN_vkEnumerateDeviceLayerProperties pfn_vkEnumerateDeviceLayerProperties = NULL;
 
 PFN_vkGetDeviceProcAddr pfn_vkGetDeviceProcAddr = NULL;
 
@@ -125,6 +126,15 @@ VkSurfaceKHR g_Surface = NULL;
 uint32_t g_PhysicalDeviceCount = 0;
 VkPhysicalDevice* g_PhysicalDevices = NULL;
 VkPhysicalDevice g_SelectedPhysicalDevice = VK_NULL_HANDLE;
+
+#ifdef DEBUG
+const char *g_DeviceLayers[] = { "VK_LAYER_KHRONOS_validation" };
+#else
+const char *g_DeviceLayers[] = {0};
+#endif
+
+char** g_DeviceLayersArray = NULL;
+uint32_t g_DeviceLayersArrayCount = 0;
 
 /*
 ==============================
@@ -469,6 +479,24 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
 
 void shutdownVulkan()
 {
+
+    if (g_DeviceLayersArrayCount)
+    {
+        for ( uint32_t i = 0; i < g_DeviceLayersArrayCount; ++i)
+        {
+            printInfoMsg("free device layers array [%d]\n",i);
+            free(g_DeviceLayersArray[i]);
+        }
+    }
+
+    g_DeviceLayersArrayCount = 0;
+
+    if (g_DeviceLayersArray)
+    {
+        free(g_DeviceLayersArray);
+        printInfoMsg("free g_DeviceLayersArray\n");
+    }
+
     if (g_PhysicalDevices)
     {
         free(g_PhysicalDevices);
@@ -843,6 +871,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     GET_INSTANCE_LEVEL_FUN_ADDR(vkDestroySurfaceKHR);
     GET_INSTANCE_LEVEL_FUN_ADDR(vkEnumeratePhysicalDevices);
     GET_INSTANCE_LEVEL_FUN_ADDR(vkGetPhysicalDeviceProperties);
+    GET_INSTANCE_LEVEL_FUN_ADDR(vkEnumerateDeviceLayerProperties);
 
 #ifdef DEBUG
     {
@@ -959,7 +988,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         printInfoMsg("requested physical device number: %d\n", g_RequestedDeviceNum);
     }
     else
-        printInfoMsg("by default using first available physical device%d\n");
+        printInfoMsg("by default using first available physical device.\n");
 
     if (g_RequestedDeviceNum > 0)
         g_SelectedPhysicalDevice = g_PhysicalDevices[g_RequestedDeviceNum-1];
@@ -967,7 +996,86 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         g_SelectedPhysicalDevice = g_PhysicalDevices[0];
 
     //enumerate device layers
+    {
 
+        uint32_t layerCount = 0;
+
+        pfn_vkEnumerateDeviceLayerProperties(g_SelectedPhysicalDevice, &layerCount, NULL);
+
+        printInfoMsg("available device layers count %d\n",layerCount);
+
+        printInfoMsg("available device layers: ");
+
+        if (layerCount>0)
+        {
+            printf("\n");
+
+            VkLayerProperties* layerProperties = NULL;
+
+            layerProperties = (VkLayerProperties*) malloc(layerCount * sizeof(VkLayerProperties));
+
+            if (layerProperties == NULL)
+            {
+                printErrorMsg("unable to allocate memory (7)\n");
+                return false;
+            }
+
+            pfn_vkEnumerateDeviceLayerProperties(g_SelectedPhysicalDevice, &layerCount, layerProperties);
+
+            for (uint32_t i=0 ; i < layerCount; ++i)
+            {
+                printf("\t%s | %s\n", layerProperties[i].layerName, layerProperties[i].description);
+            }
+
+            uint32_t numberOfEllements = sizeof g_DeviceLayers / sizeof g_DeviceLayers[0];
+
+            if(numberOfEllements == 1 && g_DeviceLayers[0] == NULL) numberOfEllements = 0;
+
+            if (numberOfEllements)
+            {
+
+                for (uint32_t i = 0 ; i < layerCount; ++i)
+                {
+                    for (uint32_t a = 0; a < numberOfEllements; ++a)
+                    {
+                        if (!strcmp(g_DeviceLayers[a], layerProperties[i].layerName))
+                        {
+
+                            char** pDeviceLayersArrayTmp = (char**) realloc(g_DeviceLayersArray, sizeof g_DeviceLayers[0] * (g_DeviceLayersArrayCount+1));
+
+                            if (!pDeviceLayersArrayTmp)
+                            {
+                                printErrorMsg("unable to reallocate memory (3)\n");
+                                free(layerProperties);
+                                return false;
+                            }
+
+                            g_DeviceLayersArray = pDeviceLayersArrayTmp;
+
+
+                            g_DeviceLayersArray[g_DeviceLayersArrayCount] = (char*) malloc(strlen(layerProperties[i].layerName) + 1);
+
+
+                            if (g_DeviceLayersArray[g_DeviceLayersArrayCount] == NULL)
+                            {
+                                printErrorMsg("unable to allocate memory (8)[%d]\n", g_DeviceLayersArrayCount);
+                                free(layerProperties);
+                                return false;
+                            }
+
+                            strcpy(g_DeviceLayersArray[g_DeviceLayersArrayCount],layerProperties[i].layerName);
+
+                            g_DeviceLayersArrayCount++;
+
+                        }
+                    }
+                }
+            }
+
+            free(layerProperties);
+        }
+        else printf("none.\n");
+	}
 
 
     return true;
