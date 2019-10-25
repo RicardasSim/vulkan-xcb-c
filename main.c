@@ -21,6 +21,8 @@
 #define VK_USE_PLATFORM_XCB_KHR
 #include <vulkan/vulkan.h>
 
+#include "enum_str_helper.h"
+
 /*
 ==============================
  printInfoMsg();
