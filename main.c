@@ -70,6 +70,7 @@ PFN_vkDestroyDebugUtilsMessengerEXT pfn_vkDestroyDebugUtilsMessengerEXT = NULL;
 #endif
 PFN_vkCreateXcbSurfaceKHR pfn_vkCreateXcbSurfaceKHR = NULL;
 PFN_vkDestroySurfaceKHR pfn_vkDestroySurfaceKHR = NULL;
+PFN_vkEnumeratePhysicalDevices pfn_vkEnumeratePhysicalDevices = NULL;
 
 PFN_vkGetDeviceProcAddr pfn_vkGetDeviceProcAddr = NULL;
 
@@ -120,6 +121,7 @@ VkDebugUtilsMessengerEXT g_DebugMessenger = NULL;
 
 VkSurfaceKHR g_Surface = NULL;
 
+uint32_t g_PhysicalDeviceCount = 0;
 
 /*
 ==============================
@@ -806,7 +808,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 #endif
     GET_INSTANCE_LEVEL_FUN_ADDR(vkCreateXcbSurfaceKHR);
     GET_INSTANCE_LEVEL_FUN_ADDR(vkDestroySurfaceKHR);
-
+    GET_INSTANCE_LEVEL_FUN_ADDR(vkEnumeratePhysicalDevices);
 
 #ifdef DEBUG
     {
@@ -824,7 +826,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 #endif
 
     //create surface
-	{
+    {
 
         VkXcbSurfaceCreateInfoKHR surfaceCreateInfo = {0};
 
@@ -840,9 +842,30 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
             return false;
         }
 
-	}
+    }
 
     printInfoMsg("create surface OK.\n");
+
+    //enumerate physical devices (1)
+    {
+        VkResult result = pfn_vkEnumeratePhysicalDevices(g_Instance, &g_PhysicalDeviceCount, NULL);
+
+        if (result != VK_SUCCESS)
+        {
+			printErrorMsg("failed to query the number of physical devices present.\n");
+			return false;
+		}
+
+		// there has to be at least one device present
+		if (g_PhysicalDeviceCount == 0)
+        {
+			printErrorMsg("couldn't detect any device present with Vulkan support.\n");
+			return false;
+		}
+
+		printInfoMsg("number of Vulkan physical devices found: %d\n", g_PhysicalDeviceCount);
+
+	}
 
     return true;
 }
