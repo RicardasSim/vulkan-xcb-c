@@ -9,7 +9,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
 #include <stdarg.h>
+#include <dlfcn.h>
+#include <xcb/xcb.h>
+#include <ctype.h>
+#include <math.h>
 #include "linmath.h"
 
 /*
