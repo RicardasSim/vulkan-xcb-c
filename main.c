@@ -132,6 +132,27 @@ bool parseOptions(int argc, char **argv)
 
 /*
 ==============================
+ openLibrary();
+==============================
+*/
+
+void* openLibrary(const char *libraryName)
+{
+    void *libraryHandle = dlopen(libraryName, RTLD_NOW);
+
+    if (!libraryHandle)
+    {
+        printErrorMsg("%s\n", dlerror());
+        return NULL;
+    }
+
+    dlerror();
+
+    return libraryHandle;
+}
+
+/*
+==============================
  shutdownVulkan();
 ==============================
 */
