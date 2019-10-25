@@ -674,7 +674,17 @@ bool initVulkan()
         }
     }
 
+#ifdef DEBUG
+    VkDebugUtilsMessengerCreateInfoEXT debugMsgrCreateInfo = {0};
 
+    debugMsgrCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    debugMsgrCreateInfo.flags = 0;
+    //| VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
+    debugMsgrCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    debugMsgrCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    debugMsgrCreateInfo.pfnUserCallback = debugMessengerCallback;
+    debugMsgrCreateInfo.pUserData = &sUsrDt;
+#endif
 
     return true;
 }
