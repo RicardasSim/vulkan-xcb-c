@@ -840,9 +840,9 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
             return false;
         }
 
-		printInfoMsg("create vulkan surface OK.\n");
-
 	}
+
+    printInfoMsg("create surface OK.\n");
 
     return true;
 }
