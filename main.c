@@ -731,7 +731,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
                                 return false;
                             }
 
-                            strcpy(g_InstanceExtensionArray[g_InstanceExtensionArrayCount], extensionProperties[i].extensionName);
+                            strcpy(g_InstanceExtensionArray[g_InstanceExtensionArrayCount],
+                                extensionProperties[i].extensionName);
 
                             g_InstanceExtensionArrayCount++;
                         }
