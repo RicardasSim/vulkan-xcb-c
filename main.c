@@ -331,6 +331,8 @@ void initVulkan()
 int main(int argc, char **argv)
 {
 
+    void *libHandle = NULL;
+
     if(!parseOptions(argc, argv))
     {
         return -1;
@@ -338,9 +340,23 @@ int main(int argc, char **argv)
 
     printInfoMsg("Starting a program.\n");
 
+    libHandle = openLibrary("libvulkan.so");
+
+    if (!libHandle)
+    {
+        return -1;
+    }
+
+    printInfoMsg("shared library libvulkan.so openned OK.\n");
 
 
 
+
+    if (closeLibrary(libHandle))
+    {
+        printErrorMsg("close libvulkan.so.\n");
+        return -1;
+    }
 
     printInfoMsg("Bye bye !\n");
 
