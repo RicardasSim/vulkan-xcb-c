@@ -23,6 +23,36 @@
 
 #include "enum_str_helper.h"
 
+#define GET_GLOBAL_LEVEL_FUN_ADDR(name) \
+pfn_##name = (PFN_##name) pfn_vkGetInstanceProcAddr(NULL,#name); \
+if (pfn_##name == NULL) \
+{ \
+    printErrorMsg("cannot get" #name "address\n"); \
+    return false; \
+}
+
+#define GET_INSTANCE_LEVEL_FUN_ADDR(name) \
+pfn_##name = (PFN_##name) pfn_vkGetInstanceProcAddr(g_Instance,#name); \
+if (pfn_##name == NULL) \
+{ \
+    printErrorMsg("cannot get" #name "address\n"); \
+    return false; \
+}
+
+#define GET_DEVICE_LEVEL_FUN_ADDR(name) \
+pfn_##name = (PFN_##name) pfn_vkGetDeviceProcAddr(g_LogicalDevice,#name); \
+if (pfn_##name == NULL) \
+{ \
+    printErrorMsg("cannot get" #name "address\n"); \
+    return false; \
+}
+
+
+PFN_vkGetInstanceProcAddr pfn_vkGetInstanceProcAddr = NULL;
+
+PFN_vkGetDeviceProcAddr pfn_vkGetDeviceProcAddr = NULL;
+
+
 /*
 ==============================
  printInfoMsg();
