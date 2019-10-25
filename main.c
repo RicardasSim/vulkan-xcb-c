@@ -72,6 +72,8 @@ bool g_MouseButton1 = false;
 bool g_MouseButton2 = false;
 bool g_MouseButton3 = false;
 
+uint32_t g_RequestedDeviceNum = 0;
+
 /*
 ==============================
  printInfoMsg();
@@ -136,6 +138,33 @@ static void printHelp(void)
 }
 
 /*
+===============================
+ isNumberPositiveAndNotNull();
+===============================
+*/
+
+bool isNumberPositiveAndNotNull(char *str, int *num)
+{
+
+    int numTmp = 0;
+
+    if (str[0]=='-') return false;
+
+    for (int i=0; str[i] != 0; ++i)
+    {
+        if (!isdigit(str[i])) return false;
+    }
+
+    numTmp=atoi(str);
+
+    if (!numTmp) return false;
+
+    *num = numTmp;
+
+    return true;
+}
+
+/*
 ==============================
  parseOptions();
 ==============================
@@ -144,7 +173,62 @@ static void printHelp(void)
 bool parseOptions(int argc, char **argv)
 {
 
+    if (argc >1)
+    {
 
+        struct optparse options;
+
+        static const struct optparse_long longopts[] = {
+            {"help",        'h',    OPTPARSE_NONE},
+            {"devicenum",   'd',    OPTPARSE_REQUIRED},
+            { 0, 0, 0 },
+        };
+
+        optparse_init(&options, argv);
+
+        char *arg;
+        int opt, longindex;
+
+        while ((opt = optparse_long(&options, longopts, &longindex)) != -1)
+        {
+            switch (opt)
+            {
+
+                case 'd':
+
+                    printInfoMsg("device number, optarg -> %s\n", options.optarg);
+
+                    int argNumber = 0;
+
+                    if (isNumberPositiveAndNotNull(options.optarg, &argNumber))
+                    {
+                        printf("is valid, number %d\n",argNumber);
+                        g_RequestedDeviceNum = argNumber - 1;
+                    }
+                    else printf("not valid\n");
+
+                    break;
+
+                case 'h':
+                    printHelp();
+                    return false;
+
+                case '?':
+
+                    printInfoMsg("%s: %s\n", argv[0], options.errmsg);
+                    //printInfoMsg("Unknown option!\n\n");
+                    return false;
+
+            }
+
+            printInfoMsg("%c (%d, %d) = '%s'\n", opt, options.optind, longindex, options.optarg);
+
+        }
+        printInfoMsg("optind = %d\n", options.optind);
+
+        while ((arg = optparse_arg(&options)))
+            printInfoMsg("argument: %s\n", arg);
+    }
 
     return true;
 }
