@@ -71,6 +71,7 @@ PFN_vkDestroyDebugUtilsMessengerEXT pfn_vkDestroyDebugUtilsMessengerEXT = NULL;
 PFN_vkCreateXcbSurfaceKHR pfn_vkCreateXcbSurfaceKHR = NULL;
 PFN_vkDestroySurfaceKHR pfn_vkDestroySurfaceKHR = NULL;
 PFN_vkEnumeratePhysicalDevices pfn_vkEnumeratePhysicalDevices = NULL;
+PFN_vkGetPhysicalDeviceProperties pfn_vkGetPhysicalDeviceProperties = NULL;
 
 PFN_vkGetDeviceProcAddr pfn_vkGetDeviceProcAddr = NULL;
 
@@ -838,6 +839,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     GET_INSTANCE_LEVEL_FUN_ADDR(vkCreateXcbSurfaceKHR);
     GET_INSTANCE_LEVEL_FUN_ADDR(vkDestroySurfaceKHR);
     GET_INSTANCE_LEVEL_FUN_ADDR(vkEnumeratePhysicalDevices);
+    GET_INSTANCE_LEVEL_FUN_ADDR(vkGetPhysicalDeviceProperties);
 
 #ifdef DEBUG
     {
@@ -913,6 +915,25 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 		}
 
 	}
+
+    for (uint32_t i = 0; i < g_PhysicalDeviceCount; ++i)
+    {
+
+        VkPhysicalDeviceProperties deviceProperties ={0};
+        pfn_vkGetPhysicalDeviceProperties(g_PhysicalDevices[i], &deviceProperties);
+        printInfoMsg("device number (%d):\n", i+1);
+
+        printf("\tdevice name: %s\n", deviceProperties.deviceName);
+
+        printf("\t%s\n", str_VkPhysicalDeviceType(deviceProperties.deviceType));
+
+        printf("\tAPI version: %d.%d.%d\n", (deviceProperties.apiVersion >> 22),
+                                            (deviceProperties.apiVersion >> 12) & 0x3FF,
+                                            (deviceProperties.apiVersion & 0xFFF));
+    }
+
+
+
 
     return true;
 }
