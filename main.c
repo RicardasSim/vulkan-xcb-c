@@ -63,6 +63,12 @@ PFN_vkEnumerateInstanceLayerProperties pfn_vkEnumerateInstanceLayerProperties = 
 PFN_vkEnumerateInstanceExtensionProperties pfn_vkEnumerateInstanceExtensionProperties = NULL;
 PFN_vkCreateInstance pfn_vkCreateInstance = NULL;
 
+PFN_vkDestroyInstance pfn_vkDestroyInstance = NULL;
+#ifdef DEBUG
+PFN_vkCreateDebugUtilsMessengerEXT pfn_vkCreateDebugUtilsMessengerEXT = NULL;
+PFN_vkDestroyDebugUtilsMessengerEXT pfn_vkDestroyDebugUtilsMessengerEXT = NULL;
+#endif
+
 PFN_vkGetDeviceProcAddr pfn_vkGetDeviceProcAddr = NULL;
 
 #ifdef DEBUG
@@ -103,6 +109,14 @@ const char *g_InstanceExtensions[] = { "VK_KHR_surface" , "VK_KHR_xcb_surface" }
 
 char **g_InstanceExtensionArray = NULL;
 uint32_t g_InstanceExtensionArrayCount = 0;
+
+VkInstance g_Instance = VK_NULL_HANDLE;
+
+#ifdef DEBUG
+VkDebugUtilsMessengerEXT g_DebugMessenger = NULL;
+#endif
+
+
 
 /*
 ==============================
@@ -435,6 +449,21 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
 
 void shutdownVulkan()
 {
+
+#ifdef DEBUG
+    if (g_DebugMessenger && pfn_vkDestroyDebugUtilsMessengerEXT)
+    {
+        pfn_vkDestroyDebugUtilsMessengerEXT(g_Instance, g_DebugMessenger,NULL);
+        printInfoMsg("DestroyDebugUtilsMessenger()\n");
+    }
+#endif
+
+    if (g_Instance && pfn_vkDestroyInstance)
+    {
+        pfn_vkDestroyInstance(g_Instance, NULL);
+        printInfoMsg("vkDestroyInstance()\n");
+    }
+
     if (g_InstanceExtensionArrayCount)
     {
         for ( uint32_t i = 0; i < g_InstanceExtensionArrayCount; ++i)
@@ -712,6 +741,76 @@ bool initVulkan()
     debugMsgrCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
     debugMsgrCreateInfo.pfnUserCallback = debugMessengerCallback;
     debugMsgrCreateInfo.pUserData = &sUsrDt;
+#endif
+
+    //create instance
+    {
+        VkApplicationInfo applicationInfo = {0};
+
+        applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+        applicationInfo.pNext = NULL;
+        applicationInfo.pApplicationName = "Linux Vulkan XCB C Sandbox";
+        applicationInfo.applicationVersion = VK_MAKE_VERSION(1,0,0);
+        applicationInfo.pEngineName = "Linux Vulkan XCB C Sandbox";
+        applicationInfo.engineVersion = VK_MAKE_VERSION(1,0,0);
+        applicationInfo.apiVersion = VK_API_VERSION_1_0;
+
+        VkInstanceCreateInfo instanceCreateInfo = {0};
+
+        instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+#ifdef DEBUG
+        instanceCreateInfo.pNext = &debugMsgrCreateInfo;
+#else
+        instanceCreateInfo.pNext = NULL;
+#endif
+        instanceCreateInfo.flags = 0;
+        instanceCreateInfo.pApplicationInfo = &applicationInfo;
+        instanceCreateInfo.enabledLayerCount = g_InstanceLayersArrayCount;
+        if (g_InstanceLayersArrayCount) instanceCreateInfo.ppEnabledLayerNames = (const char* const*) g_InstanceLayersArray;
+        else instanceCreateInfo.ppEnabledLayerNames = NULL;
+        instanceCreateInfo.enabledExtensionCount = g_InstanceExtensionArrayCount;
+        if (g_InstanceExtensionArrayCount) instanceCreateInfo.ppEnabledExtensionNames = (const char* const*) g_InstanceExtensionArray;
+        else instanceCreateInfo.ppEnabledExtensionNames = NULL;
+
+       	VkResult result = pfn_vkCreateInstance(&instanceCreateInfo, NULL, &g_Instance);
+
+        //TODO: free g_InstanceExtensionArray here
+
+        if (result != VK_SUCCESS)
+        {
+            if (result == VK_ERROR_INCOMPATIBLE_DRIVER) printErrorMsg("failed to create Vulkan instance, can't find a compatible Vulkan driver.\n");
+            else printErrorMsg("failed to create Vulkan instance\n");
+
+            return false;
+        }
+
+        printInfoMsg("create vulkan instance OK.\n");
+
+    }//create instance
+
+    //get inst level fnc address
+
+    GET_INSTANCE_LEVEL_FUN_ADDR(vkDestroyInstance);
+#ifdef DEBUG
+    GET_INSTANCE_LEVEL_FUN_ADDR(vkCreateDebugUtilsMessengerEXT);
+    GET_INSTANCE_LEVEL_FUN_ADDR(vkDestroyDebugUtilsMessengerEXT);
+#endif
+
+
+
+#ifdef DEBUG
+    {
+        VkResult result = pfn_vkCreateDebugUtilsMessengerEXT(g_Instance, &debugMsgrCreateInfo, NULL, &g_DebugMessenger);
+
+        if (result != VK_SUCCESS)
+        {
+            printErrorMsg("CreateDebugUtilsMessengerEXT()\n");
+            return false;
+        }
+
+        printInfoMsg("CreateDebugUtilsMessengerEXT() OK.\n");
+
+    }
 #endif
 
     return true;
