@@ -99,6 +99,21 @@ void printWarningMsg(const char *format, ...)
 }
 
 /*
+==============================
+ parseOptions();
+==============================
+*/
+
+bool parseOptions(int argc, char **argv)
+{
+
+
+
+    return true;
+}
+
+
+/*
 ===================
  main();
 ===================
