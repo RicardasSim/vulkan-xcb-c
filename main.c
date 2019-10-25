@@ -236,14 +236,14 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
 
     printf("\nDEBUG: ");
 
-	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) printf("%s","VK VERBOSE, ");
-	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) printf("%s","VK INFO, ");
-	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) printf("%s","VK WARNING, ");
+    if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) printf("%s","VK VERBOSE, ");
+    else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) printf("%s","VK INFO, ");
+    else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) printf("%s","VK WARNING, ");
     else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) printf("%s","VK ERROR, ");
 
 
-	if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT) printf("%s","GENERAL ");
-	else
+    if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT) printf("%s","GENERAL ");
+    else
     {
         if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) printf("%s","VALIDATION ");
 
@@ -252,8 +252,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
             if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) printf("%s","| ");
             printf("%s","PERFORMANCE ");
         }
-
-	}
+    }
 
     printf("\nMessage ID: %d, Message Name: %s, Message: %s\n", pCallbackData->messageIdNumber, pCallbackData->pMessageIdName, pCallbackData->pMessage);
 
@@ -269,34 +268,34 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
                         (void*)(pCallbackData->pObjects[i].objectHandle),
                         pCallbackData->pObjects[i].pObjectName ? pCallbackData->pObjects[i].pObjectName : "nullptr"
                         );
-		}
-	}
+        }
+    }
 
     if (pCallbackData->queueLabelCount > 0)
     {
-		printf("count of items in the pQueueLabels array: %d\n",pCallbackData->queueLabelCount);
+        printf("count of items in the pQueueLabels array: %d\n",pCallbackData->queueLabelCount);
 
-		for (uint32_t i = 0; i < pCallbackData->queueLabelCount; ++i)
+        for (uint32_t i = 0; i < pCallbackData->queueLabelCount; ++i)
         {
             printf("Queue Label[%d] - Name: %s Color: {%f, %f, %f, %f}\n", i, pCallbackData->pQueueLabels[i].pLabelName, pCallbackData->pQueueLabels[i].color[0],
                 pCallbackData->pQueueLabels[i].color[1], pCallbackData->pQueueLabels[i].color[2], pCallbackData->pQueueLabels[i].color[3]);
-		}
-	}
+        }
+    }
 
-	if (pCallbackData->cmdBufLabelCount > 0)
+    if (pCallbackData->cmdBufLabelCount > 0)
     {
-		printf("count of items in the pCmdBufLabels array: %d\n",pCallbackData->cmdBufLabelCount);
+        printf("count of items in the pCmdBufLabels array: %d\n",pCallbackData->cmdBufLabelCount);
 
-		for (uint32_t i = 0; i < pCallbackData->cmdBufLabelCount; ++i)
+        for (uint32_t i = 0; i < pCallbackData->cmdBufLabelCount; ++i)
         {
             printf("Buf Label[%d] - Name: %s Color: {%f, %f, %f, %f}\n", i, pCallbackData->pCmdBufLabels[i].pLabelName, pCallbackData->pCmdBufLabels[i].color[0],
                 pCallbackData->pCmdBufLabels[i].color[1], pCallbackData->pCmdBufLabels[i].color[2], pCallbackData->pCmdBufLabels[i].color[3]);
-		}
-	}
+        }
+    }
 
-	printf("\n");
+    printf("\n");
 
-	return VK_FALSE;
+    return VK_FALSE;
 }
 
 #endif
