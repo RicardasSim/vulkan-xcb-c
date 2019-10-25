@@ -349,6 +349,16 @@ int main(int argc, char **argv)
 
     printInfoMsg("shared library libvulkan.so openned OK.\n");
 
+    if (!getFncAddress(libHandle))
+    {
+        printErrorMsg("failed to load functions pointers.\n");
+
+        if (closeLibrary(libHandle))
+        {
+            printErrorMsg("close libvulkan.so.\n");
+        }
+        return -1;
+    }
 
 
 
