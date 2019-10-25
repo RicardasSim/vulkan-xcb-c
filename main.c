@@ -130,6 +130,16 @@ bool parseOptions(int argc, char **argv)
     return true;
 }
 
+/*
+==============================
+ shutdownVulkan();
+==============================
+*/
+
+void shutdownVulkan()
+{
+
+}
 
 /*
 ===================
