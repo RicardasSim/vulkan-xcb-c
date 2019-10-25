@@ -18,6 +18,9 @@
 #include <math.h>
 #include "linmath.h"
 
+#define VK_USE_PLATFORM_XCB_KHR
+#include <vulkan/vulkan.h>
+
 /*
 ==============================
  printInfoMsg();
