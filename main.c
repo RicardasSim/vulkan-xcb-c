@@ -956,12 +956,19 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         return false;
     }
 
-    printInfoMsg("requested physical device number: %d\n", g_RequestedDeviceNum);
+    if (g_RequestedDeviceNum > 0)
+    {
+        printInfoMsg("requested physical device number: %d\n", g_RequestedDeviceNum);
+    }
+    else
+        printInfoMsg("by default using first available physical device%d\n");
 
     if (g_RequestedDeviceNum > 0)
         g_SelectedPhysicalDevice = g_PhysicalDevices[g_RequestedDeviceNum-1];
     else
-         g_SelectedPhysicalDevice = g_PhysicalDevices[0];
+        g_SelectedPhysicalDevice = g_PhysicalDevices[0];
+
+
 
     return true;
 }
