@@ -131,11 +131,11 @@ uint32_t g_PhysicalDeviceCount = 0;
 
 void printInfoMsg(const char *format, ...)
 {
-  va_list args;
-  va_start(args, format);
-  printf("INFO: ");
-  vprintf(format, args);
-  va_end(args);
+    va_list args;
+    va_start(args, format);
+    printf("INFO: ");
+    vprintf(format, args);
+    va_end(args);
 }
 
 /*
@@ -146,11 +146,11 @@ void printInfoMsg(const char *format, ...)
 
 void printErrorMsg(const char *format, ...)
 {
-  va_list args;
-  va_start(args, format);
-  printf("ERROR: ");
-  vprintf(format, args);
-  va_end(args);
+    va_list args;
+    va_start(args, format);
+    printf("ERROR: ");
+    vprintf(format, args);
+    va_end(args);
 }
 
 /*
@@ -161,11 +161,11 @@ void printErrorMsg(const char *format, ...)
 
 void printWarningMsg(const char *format, ...)
 {
-  va_list args;
-  va_start(args, format);
-  printf("WARNING: ");
-  vprintf(format, args);
-  va_end(args);
+    va_list args;
+    va_start(args, format);
+    printf("WARNING: ");
+    vprintf(format, args);
+    va_end(args);
 }
 
 /*
@@ -490,7 +490,7 @@ void shutdownVulkan()
         printInfoMsg("free g_InstanceExtensionArray\n");
     }
 
-	if (g_InstanceLayersArrayCount)
+    if (g_InstanceLayersArrayCount)
     {
         for ( uint32_t i = 0; i < g_InstanceLayersArrayCount; ++i)
         {
@@ -499,11 +499,11 @@ void shutdownVulkan()
         }
     }
 
-	if (g_InstanceLayersArray)
+    if (g_InstanceLayersArray)
     {
-		free(g_InstanceLayersArray);
-		printInfoMsg("free g_InstanceLayersArray\n");
-	}
+        free(g_InstanceLayersArray);
+        printInfoMsg("free g_InstanceLayersArray\n");
+    }
 }
 
 /*
@@ -653,7 +653,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         }
     }
 
- 	//enumerate instance extensions
+    //enumerate instance extensions
     {
 
         uint32_t extensionCount = 0;
@@ -797,7 +797,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
         printInfoMsg("create vulkan instance OK.\n");
 
-    }//create instance
+    }
 
     //get inst level fnc address
 
@@ -827,7 +827,6 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
     //create surface
     {
-
         VkXcbSurfaceCreateInfoKHR surfaceCreateInfo = {0};
 
         surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
@@ -841,7 +840,6 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
             printErrorMsg("vkCreateXcbSurfaceKHR().");
             return false;
         }
-
     }
 
     printInfoMsg("create surface OK.\n");
@@ -852,20 +850,20 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
         if (result != VK_SUCCESS)
         {
-			printErrorMsg("failed to query the number of physical devices present.\n");
-			return false;
-		}
+	        printErrorMsg("failed to query the number of physical devices present.\n");
+	        return false;
+	    }
 
-		// there has to be at least one device present
-		if (g_PhysicalDeviceCount == 0)
+	    // there has to be at least one device present
+	    if (g_PhysicalDeviceCount == 0)
         {
-			printErrorMsg("couldn't detect any device present with Vulkan support.\n");
-			return false;
-		}
+	        printErrorMsg("couldn't detect any device present with Vulkan support.\n");
+	        return false;
+	    }
 
-		printInfoMsg("number of Vulkan physical devices found: %d\n", g_PhysicalDeviceCount);
+	    printInfoMsg("number of Vulkan physical devices found: %d\n", g_PhysicalDeviceCount);
 
-	}
+    }
 
     return true;
 }
@@ -908,11 +906,11 @@ int main(int argc, char **argv)
     xcb_screen_iterator_t screenIter;
     xcb_screen_t *screen = NULL;
     xcb_window_t window = 0;
- 	uint32_t mask;
-	uint32_t values[2];
+    uint32_t mask;
+    uint32_t values[2];
     xcb_generic_error_t *error;
- 	xcb_void_cookie_t cookieWindow;
-	xcb_void_cookie_t cookieMap;
+    xcb_void_cookie_t cookieWindow;
+    xcb_void_cookie_t cookieMap;
     xcb_intern_atom_reply_t *atomReply = NULL;
     char *title = "Linux Vulkan XCB C Sandbox";
     xcb_generic_event_t *event;
@@ -959,9 +957,9 @@ int main(int argc, char **argv)
 
     connection = xcb_connect(NULL, &screenNum);
 
-	if (connection == NULL)
+    if (connection == NULL)
     {
-		printErrorMsg("can't connect to an X server.\n");
+        printErrorMsg("can't connect to an X server.\n");
 
         if (closeLibrary(libHandle))
         {
@@ -969,22 +967,22 @@ int main(int argc, char **argv)
         }
 
         return 1;
-	}
+    }
 
     printInfoMsg("connect to an X server OK.\n");
 
     screenIter = xcb_setup_roots_iterator(xcb_get_setup(connection));
 
-	while (screenNum-- > 0)
+    while (screenNum-- > 0)
     {
-		xcb_screen_next( &screenIter );
-	}
+        xcb_screen_next( &screenIter );
+    }
 
-	screen = screenIter.data;
+    screen = screenIter.data;
 
-	if (!screen)
+    if (!screen)
     {
-		printErrorMsg("can't get the current screen.\n");
+        printErrorMsg("can't get the current screen.\n");
 
         xcb_disconnect(connection);
 
@@ -994,17 +992,17 @@ int main(int argc, char **argv)
         }
 
         return 1;
-	}
+    }
 
     printInfoMsg("get current screen OK.\n");
 
     window = xcb_generate_id(connection);
 
-	mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
+    mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
 
     values[0] = screen->black_pixel;
 
-	values[1] = XCB_EVENT_MASK_EXPOSURE |
+    values[1] = XCB_EVENT_MASK_EXPOSURE |
                     XCB_EVENT_MASK_RESIZE_REDIRECT |
                     XCB_EVENT_MASK_KEY_PRESS |
                     XCB_EVENT_MASK_KEY_RELEASE |
@@ -1012,7 +1010,7 @@ int main(int argc, char **argv)
                     XCB_EVENT_MASK_BUTTON_PRESS |
                     XCB_EVENT_MASK_BUTTON_RELEASE;
 
-	cookieWindow = xcb_create_window_checked(connection,
+    cookieWindow = xcb_create_window_checked(connection,
                                 XCB_COPY_FROM_PARENT,
                                 window,
                                 screen->root,
@@ -1023,64 +1021,64 @@ int main(int argc, char **argv)
                                 mask,
                                 values);
 
- 	error = xcb_request_check (connection, cookieWindow);
+    error = xcb_request_check (connection, cookieWindow);
 
-	if (error)
+    if (error)
     {
-		printErrorMsg("can't create window : %d\n", error->error_code);
+        printErrorMsg("can't create window : %d\n", error->error_code);
 
-		xcb_disconnect(connection);
+        xcb_disconnect(connection);
 
         if (closeLibrary(libHandle))
         {
             printErrorMsg("close libvulkan.so.\n");
         }
 
-		return 1;
-	}
+        return 1;
+    }
 
     printInfoMsg("create window OK.\n");
 
- 	/* Magic code that will send notification when window is destroyed */
-	xcb_intern_atom_cookie_t cookie1 = xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
-	xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(connection, cookie1, 0);
-	xcb_intern_atom_cookie_t cookie2 = xcb_intern_atom(connection, 0, 16,"WM_DELETE_WINDOW");
-	atomReply = xcb_intern_atom_reply(connection, cookie2, 0);
-	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, (*reply).atom, 4, 32, 1, &(*atomReply).atom);
-	free(reply);
+    /* Magic code that will send notification when window is destroyed */
+    xcb_intern_atom_cookie_t cookie1 = xcb_intern_atom(connection, 1, 12, "WM_PROTOCOLS");
+    xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(connection, cookie1, 0);
+    xcb_intern_atom_cookie_t cookie2 = xcb_intern_atom(connection, 0, 16,"WM_DELETE_WINDOW");
+    atomReply = xcb_intern_atom_reply(connection, cookie2, 0);
+    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, (*reply).atom, 4, 32, 1, &(*atomReply).atom);
+    free(reply);
 
     /* set title of the window */
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, strlen (title), title);
 
     cookieMap = xcb_map_window_checked(connection, window);
 
-	error = xcb_request_check(connection, cookieMap);
+    error = xcb_request_check(connection, cookieMap);
 
-	if (error)
+    if (error)
     {
-		printErrorMsg("can't map window : %d\n", error->error_code);
+        printErrorMsg("can't map window : %d\n", error->error_code);
 
         free(atomReply);
 
         xcb_destroy_window(connection, window);
 
-		xcb_disconnect(connection);
+        xcb_disconnect(connection);
 
         if (closeLibrary(libHandle))
         {
             printErrorMsg("close libvulkan.so.\n");
         }
 
-		return 1;
-	}
+        return 1;
+    }
 
     printInfoMsg("map window OK.\n");
 
-	xcb_flush (connection);
+    xcb_flush (connection);
 
     if (!initVulkan(window,connection))
     {
-		printErrorMsg("initVulkan().\n");
+        printErrorMsg("initVulkan().\n");
 
         shutdownVulkan();
 
@@ -1095,33 +1093,33 @@ int main(int argc, char **argv)
             printErrorMsg("close libvulkan.so.\n");
         }
 
-		return 1;
-	}
+        return 1;
+    }
 
     g_Ready = true;
 
     printInfoMsg("Ready !\n");
 
-  	while (!g_Quit)
-	{
+    while (!g_Quit)
+    {
 
         event = xcb_poll_for_event(connection);
         xcb_resize_request_event_t *resizeRequestEvent;
         xcb_button_press_event_t *buttonPressEvent;
         xcb_motion_notify_event_t *motionNotify;
 
-		if (event)
+        if (event)
         {
             switch (event->response_type & ~0x80)
             {
 
                 case XCB_EXPOSE:
 
-					xcb_flush(connection);
+                    xcb_flush(connection);
 
                     break;
 
-				case XCB_CLIENT_MESSAGE:
+                case XCB_CLIENT_MESSAGE:
 
                     if ((*(xcb_client_message_event_t*)event).data.data32[0] == (*atomReply).atom)
                     {
@@ -1143,7 +1141,7 @@ int main(int argc, char **argv)
 
                     break;
 
-				case XCB_KEY_PRESS:
+                case XCB_KEY_PRESS:
 
                     keyPressEvent = (xcb_key_press_event_t*)event;
 
@@ -1163,7 +1161,7 @@ int main(int argc, char **argv)
 
                         default:
                             break;
-					}
+                    }
 
                     break;
 
@@ -1261,9 +1259,9 @@ int main(int argc, char **argv)
 
     shutdownVulkan();
 
-	free(atomReply);
+    free(atomReply);
     xcb_destroy_window(connection, window);
-	xcb_disconnect(connection);
+    xcb_disconnect(connection);
 
     if (closeLibrary(libHandle))
     {
