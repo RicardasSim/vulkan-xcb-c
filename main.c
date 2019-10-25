@@ -122,6 +122,8 @@ VkDebugUtilsMessengerEXT g_DebugMessenger = NULL;
 VkSurfaceKHR g_Surface = NULL;
 
 uint32_t g_PhysicalDeviceCount = 0;
+VkPhysicalDevice* g_PhysicalDevices = NULL;
+VkPhysicalDevice g_SelectedPhysicalDevice = VK_NULL_HANDLE;
 
 /*
 ==============================
@@ -463,6 +465,11 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
 
 void shutdownVulkan()
 {
+    if (g_PhysicalDevices)
+    {
+        free(g_PhysicalDevices);
+        printInfoMsg("free g_PhysicalDevices\n");
+    }
 
     if (g_Surface && pfn_vkDestroySurfaceKHR)
     {
@@ -886,6 +893,26 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         printInfoMsg("number of Vulkan physical devices found: %d\n", g_PhysicalDeviceCount);
 
     }
+
+    g_PhysicalDevices = (VkPhysicalDevice*) malloc(g_PhysicalDeviceCount * sizeof(VkPhysicalDevice));
+
+    if (g_PhysicalDevices == NULL) {
+        printErrorMsg("unable to allocate memory (5)\n");
+        return false;
+    }
+
+    //enumerate physical devices (2)
+ 	{
+
+		VkResult result = pfn_vkEnumeratePhysicalDevices(g_Instance, &g_PhysicalDeviceCount, g_PhysicalDevices);
+
+		if (result != VK_SUCCESS)
+        {
+            printErrorMsg("faied to enumerate physical devices present.\n");
+			return false;
+		}
+
+	}
 
     return true;
 }
