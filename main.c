@@ -609,7 +609,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
                         if (!strcmp(g_InstanceLayers[a], layerProperties[i].layerName))
                         {
                             char **pInstanceLayersArrayTmp =
-                                (char**) realloc(g_InstanceLayersArray, sizeof g_InstanceLayers[0] * (g_InstanceLayersArrayCount+1));
+                                (char**) realloc(g_InstanceLayersArray,
+                                sizeof g_InstanceLayers[0] * (g_InstanceLayersArrayCount+1));
 
                             if (!pInstanceLayersArrayTmp)
                             {
@@ -620,7 +621,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
                             g_InstanceLayersArray = pInstanceLayersArrayTmp;
 
-                            g_InstanceLayersArray[g_InstanceLayersArrayCount] = (char*) malloc(strlen(layerProperties[i].layerName) + 1);
+                            g_InstanceLayersArray[g_InstanceLayersArrayCount] =
+                                (char*) malloc(strlen(layerProperties[i].layerName) + 1);
 
                             if (g_InstanceLayersArray[g_InstanceLayersArrayCount] == NULL)
                             {
