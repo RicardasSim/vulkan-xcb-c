@@ -68,6 +68,8 @@ PFN_vkDestroyInstance pfn_vkDestroyInstance = NULL;
 PFN_vkCreateDebugUtilsMessengerEXT pfn_vkCreateDebugUtilsMessengerEXT = NULL;
 PFN_vkDestroyDebugUtilsMessengerEXT pfn_vkDestroyDebugUtilsMessengerEXT = NULL;
 #endif
+PFN_vkCreateXcbSurfaceKHR pfn_vkCreateXcbSurfaceKHR = NULL;
+PFN_vkDestroySurfaceKHR pfn_vkDestroySurfaceKHR = NULL;
 
 PFN_vkGetDeviceProcAddr pfn_vkGetDeviceProcAddr = NULL;
 
@@ -116,6 +118,7 @@ VkInstance g_Instance = VK_NULL_HANDLE;
 VkDebugUtilsMessengerEXT g_DebugMessenger = NULL;
 #endif
 
+VkSurfaceKHR g_Surface = NULL;
 
 
 /*
@@ -450,6 +453,12 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
 void shutdownVulkan()
 {
 
+    if (g_Surface && pfn_vkDestroySurfaceKHR)
+    {
+        pfn_vkDestroySurfaceKHR(g_Instance, g_Surface, NULL);
+        printInfoMsg("vkDestroySurfaceKHR()\n");
+    }
+
 #ifdef DEBUG
     if (g_DebugMessenger && pfn_vkDestroyDebugUtilsMessengerEXT)
     {
@@ -535,7 +544,7 @@ bool isAvailable(char **array, uint32_t count, const char *name)
 ==============================
 */
 
-bool initVulkan()
+bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 {
 
     //get global level fnc address
@@ -795,7 +804,8 @@ bool initVulkan()
     GET_INSTANCE_LEVEL_FUN_ADDR(vkCreateDebugUtilsMessengerEXT);
     GET_INSTANCE_LEVEL_FUN_ADDR(vkDestroyDebugUtilsMessengerEXT);
 #endif
-
+    GET_INSTANCE_LEVEL_FUN_ADDR(vkCreateXcbSurfaceKHR);
+    GET_INSTANCE_LEVEL_FUN_ADDR(vkDestroySurfaceKHR);
 
 
 #ifdef DEBUG
@@ -812,6 +822,27 @@ bool initVulkan()
 
     }
 #endif
+
+    //create surface
+	{
+
+        VkXcbSurfaceCreateInfoKHR surfaceCreateInfo = {0};
+
+        surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
+        surfaceCreateInfo.connection = conn;
+        surfaceCreateInfo.window = wnd;
+
+        VkResult result = pfn_vkCreateXcbSurfaceKHR(g_Instance, &surfaceCreateInfo, NULL, &g_Surface);
+
+        if (result != VK_SUCCESS)
+        {
+            printErrorMsg("vkCreateXcbSurfaceKHR().");
+            return false;
+        }
+
+		printInfoMsg("create vulkan surface OK.\n");
+
+	}
 
     return true;
 }
