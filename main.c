@@ -95,6 +95,12 @@ const char *g_InstanceLayers[] = {0};
 char **g_InstanceLayersArray = NULL;
 uint32_t g_InstanceLayersArrayCount = 0;
 
+#ifdef DEBUG
+const char *g_InstanceExtensions[] = { "VK_KHR_surface" , "VK_KHR_xcb_surface" , "VK_EXT_debug_utils"};
+#else
+const char *g_InstanceExtensions[] = { "VK_KHR_surface" , "VK_KHR_xcb_surface" };
+#endif
+
 char **g_InstanceExtensionArray = NULL;
 uint32_t g_InstanceExtensionArrayCount = 0;
 
@@ -579,7 +585,94 @@ bool initVulkan()
         }
     }
 
+ 	//enumerate instance extensions
+    {
 
+        uint32_t extensionCount = 0;
+
+        pfn_vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, NULL);
+
+        printInfoMsg("instance extension count: %d\n", extensionCount);
+
+        printInfoMsg("available instance extensions: ");
+
+        if (extensionCount>0)
+        {
+
+            printf("\n");
+
+            VkExtensionProperties* extensionProperties = (VkExtensionProperties*) malloc(extensionCount * sizeof(VkExtensionProperties));
+
+            if (extensionProperties==NULL)
+            {
+                printErrorMsg("unable to allocate memory (3)\n");
+                return false;
+            }
+
+            pfn_vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, extensionProperties);
+
+            for (uint32_t i = 0 ; i < extensionCount; ++i)
+            {
+                printf("\t%s\n",extensionProperties[i].extensionName);
+            }
+
+            uint32_t numberOfEllementsExt = sizeof g_InstanceExtensions / sizeof g_InstanceExtensions[0];
+
+            if(numberOfEllementsExt == 1 && g_InstanceExtensions[0] == NULL) numberOfEllementsExt = 0;
+
+            if (numberOfEllementsExt)
+            {
+                for (uint32_t i = 0 ; i < extensionCount; ++i)
+                {
+                    for (uint32_t a = 0; a < numberOfEllementsExt; ++a)
+                    {
+                        if (!strcmp(g_InstanceExtensions[a], extensionProperties[i].extensionName))
+                        {
+                            char** pInstanceExtensionArrayTmp = (char**) realloc(g_InstanceExtensionArray, sizeof g_InstanceExtensionArray[0] * (g_InstanceExtensionArrayCount+1));
+
+                            if (!pInstanceExtensionArrayTmp)
+                            {
+                                printErrorMsg("unable to reallocate memory (2)\n");
+                                free(extensionProperties);
+                                return false;
+                            }
+
+                            g_InstanceExtensionArray = pInstanceExtensionArrayTmp;
+
+                            g_InstanceExtensionArray[g_InstanceExtensionArrayCount] = (char*) malloc(strlen(extensionProperties[i].extensionName) + 1);
+
+                            if (g_InstanceExtensionArray[g_InstanceExtensionArrayCount] == NULL)
+                            {
+                                printErrorMsg("unable to allocate memory (4)[%d]\n",g_InstanceExtensionArrayCount);
+                                free(extensionProperties);
+                                return false;
+                            }
+
+                            strcpy(g_InstanceExtensionArray[g_InstanceExtensionArrayCount], extensionProperties[i].extensionName);
+
+                            g_InstanceExtensionArrayCount++;
+                        }
+                    }
+                }
+            }
+
+            free(extensionProperties);
+
+        }
+        else printf("none.\n");
+
+    }
+
+    printInfoMsg("count of instance extensions to be used: %d\n",g_InstanceExtensionArrayCount);
+
+    if (g_InstanceExtensionArrayCount>0)
+    {
+        printInfoMsg("list of instance extensions to be used:\n");
+        for (uint32_t i = 0; i < g_InstanceExtensionArrayCount; ++i)
+        {
+            printf("\t%s\n",g_InstanceExtensionArray[i]);
+        }
+    }
 
 
 
