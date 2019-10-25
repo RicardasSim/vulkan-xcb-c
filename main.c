@@ -695,6 +695,13 @@ int main(int argc, char **argv)
             free (event);
 
         }
+
+        if (g_Ready)
+        {
+            updateData();
+            renderVulkan();
+        }
+
     }
 
 	free(atomReply);
