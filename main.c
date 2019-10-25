@@ -269,7 +269,7 @@ bool parseOptions(int argc, char **argv)
 ==============================
 */
 
-void* openLibrary(const char *libraryName)
+void *openLibrary(const char *libraryName)
 {
     void *libraryHandle = dlopen(libraryName, RTLD_NOW);
 
@@ -307,7 +307,7 @@ int closeLibrary(void *libraryHandle)
 ==============================
 */
 
-void* getPointerFromLib(void *libraryHandle, const char *fName)
+void *getPointerFromLib(void *libraryHandle, const char *fName)
 {
 
     void *p = dlsym(libraryHandle, fName);
@@ -353,8 +353,8 @@ int getFncAddress(void *libraryHandle)
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
                                                         VkDebugUtilsMessageTypeFlagsEXT messageType,
-                                                        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-                                                        void* pUserData)
+                                                        const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+                                                        void *pUserData)
 {
 
     /* Silence compiler warning for unused parameter pUserData */
@@ -502,7 +502,7 @@ bool initVulkan()
 
             printf("\n");
 
-            VkLayerProperties* layerProperties = NULL;
+            VkLayerProperties *layerProperties = NULL;
 
             layerProperties = (VkLayerProperties*) malloc(layerCount * sizeof(VkLayerProperties));
 
@@ -531,7 +531,7 @@ bool initVulkan()
                     {
                         if (!strcmp(g_InstanceLayers[a], layerProperties[i].layerName))
                         {
-                            char** pInstanceLayersArrayTmp = (char**) realloc(g_InstanceLayersArray, sizeof g_InstanceLayers[0] * (g_InstanceLayersArrayCount+1));
+                            char **pInstanceLayersArrayTmp = (char**) realloc(g_InstanceLayersArray, sizeof g_InstanceLayers[0] * (g_InstanceLayersArrayCount+1));
 
                             if (!pInstanceLayersArrayTmp)
                             {
@@ -601,7 +601,7 @@ bool initVulkan()
 
             printf("\n");
 
-            VkExtensionProperties* extensionProperties = (VkExtensionProperties*) malloc(extensionCount * sizeof(VkExtensionProperties));
+            VkExtensionProperties *extensionProperties = (VkExtensionProperties*) malloc(extensionCount * sizeof(VkExtensionProperties));
 
             if (extensionProperties==NULL)
             {
@@ -628,7 +628,7 @@ bool initVulkan()
                     {
                         if (!strcmp(g_InstanceExtensions[a], extensionProperties[i].extensionName))
                         {
-                            char** pInstanceExtensionArrayTmp = (char**) realloc(g_InstanceExtensionArray, sizeof g_InstanceExtensionArray[0] * (g_InstanceExtensionArrayCount+1));
+                            char **pInstanceExtensionArrayTmp = (char**) realloc(g_InstanceExtensionArray, sizeof g_InstanceExtensionArray[0] * (g_InstanceExtensionArrayCount+1));
 
                             if (!pInstanceExtensionArrayTmp)
                             {
@@ -915,9 +915,9 @@ int main(int argc, char **argv)
 	{
 
         event = xcb_poll_for_event(connection);
-        xcb_resize_request_event_t* resizeRequestEvent;
-        xcb_button_press_event_t* buttonPressEvent;
-        xcb_motion_notify_event_t* motionNotify;
+        xcb_resize_request_event_t *resizeRequestEvent;
+        xcb_button_press_event_t *buttonPressEvent;
+        xcb_motion_notify_event_t *motionNotify;
 
 		if (event)
         {
