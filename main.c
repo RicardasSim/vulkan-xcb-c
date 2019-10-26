@@ -75,6 +75,7 @@ PFN_vkGetPhysicalDeviceProperties pfn_vkGetPhysicalDeviceProperties = NULL;
 PFN_vkEnumerateDeviceLayerProperties pfn_vkEnumerateDeviceLayerProperties = NULL;
 PFN_vkEnumerateDeviceExtensionProperties pfn_vkEnumerateDeviceExtensionProperties = NULL;
 PFN_vkGetPhysicalDeviceQueueFamilyProperties pfn_vkGetPhysicalDeviceQueueFamilyProperties = NULL;
+PFN_vkGetPhysicalDeviceSurfaceSupportKHR pfn_vkGetPhysicalDeviceSurfaceSupportKHR = NULL;
 
 PFN_vkGetDeviceProcAddr pfn_vkGetDeviceProcAddr = NULL;
 
@@ -146,6 +147,9 @@ const char *g_DeviceExtensions[] = {"VK_KHR_swapchain"};
 
 char** g_DeviceExtArray = NULL;
 uint32_t g_DeviceExtArrayCount = 0;
+
+int32_t g_GraphicsQueueFamilyIndex = -1;
+int32_t g_PresentQueueFamilyIndex = -1;
 
 /*
 ==============================
@@ -711,7 +715,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         else printf("none.\n");
     }
 
- #ifdef DEBUG
+#ifdef DEBUG
     if (!isAvailable(g_InstanceLayersArray, g_InstanceLayersArrayCount, "VK_LAYER_KHRONOS_validation"))
     {
         printErrorMsg("requested layer not available: VK_LAYER_KHRONOS_validation\n");
@@ -901,6 +905,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     GET_INSTANCE_LEVEL_FUN_ADDR(vkEnumerateDeviceLayerProperties);
     GET_INSTANCE_LEVEL_FUN_ADDR(vkEnumerateDeviceExtensionProperties);
     GET_INSTANCE_LEVEL_FUN_ADDR(vkGetPhysicalDeviceQueueFamilyProperties);
+    GET_INSTANCE_LEVEL_FUN_ADDR(vkGetPhysicalDeviceSurfaceSupportKHR);
 
 #ifdef DEBUG
     {
@@ -1224,9 +1229,101 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
         pfn_vkGetPhysicalDeviceQueueFamilyProperties(g_SelectedPhysicalDevice, &queueFamilyCount, NULL);
 
-        printInfoMsg("queueFamilyCount %d\n",queueFamilyCount);
+        printInfoMsg("queue family count %d\n",queueFamilyCount);
 
+        if (queueFamilyCount<1)
+        {
+            printErrorMsg("queue family count is not greater than zero, exitting.\n");
+            return false;
+        }
+
+        VkQueueFamilyProperties* familyProperties =
+            (VkQueueFamilyProperties*) malloc(queueFamilyCount * sizeof(VkQueueFamilyProperties));
+
+        if (familyProperties == NULL)
+        {
+            printErrorMsg("unable to allocate memory (11)\n");
+            return false;
+        }
+
+        pfn_vkGetPhysicalDeviceQueueFamilyProperties(g_SelectedPhysicalDevice,	&queueFamilyCount, familyProperties);
+
+        for (uint32_t i = 0; i < queueFamilyCount; ++i)
+        {
+            printInfoMsg("count of queues in queue family [%d]: %d\n", i, familyProperties[i].queueCount);
+
+            printInfoMsg("Supported operations on this queue family [%d]:\n",i);
+
+            if (familyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+                printf("\tGraphics\n");
+
+            if (familyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT)
+                printf("\tCompute\n");
+
+            if (familyProperties[i].queueFlags & VK_QUEUE_TRANSFER_BIT)
+                printf("\tTransfer\n");
+
+            if (familyProperties[i].queueFlags & VK_QUEUE_SPARSE_BINDING_BIT)
+                printf("\tSparse Binding\n");
+
+            if (familyProperties[i].queueFlags & VK_QUEUE_PROTECTED_BIT)
+                printf("\tProtected\n");
+
+        }
+
+        /*
+         find the first matching index for g_GraphicsQueueFamilyIndex and g_PresentQueueFamilyIndex
+         if there is none, find first for g_GraphicsQueueFamilyIndex and first for g_PresentQueueFamilyIndex
+        */
+
+        for (uint32_t i = 0; i<queueFamilyCount; ++i)
+        {
+            VkBool32 presentationSupported;
+
+            VkResult result = pfn_vkGetPhysicalDeviceSurfaceSupportKHR( g_SelectedPhysicalDevice, i, g_Surface, &presentationSupported);
+
+            if (result != VK_SUCCESS)
+            {
+                free(familyProperties);
+                printErrorMsg("vkGetPhysicalDeviceSurfaceSupportKHR().\n");
+                return false;
+            }
+
+            if (familyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT && presentationSupported)
+            {
+                g_GraphicsQueueFamilyIndex = i;
+                g_PresentQueueFamilyIndex = i;
+                break;
+            }
+
+            if( g_GraphicsQueueFamilyIndex == -1 )
+            {
+                if( familyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT ) g_GraphicsQueueFamilyIndex = i;
+            }
+
+            if( g_PresentQueueFamilyIndex == -1 )
+            {
+                if( presentationSupported ) g_PresentQueueFamilyIndex = i;
+            }
+        }
+
+        free(familyProperties);
     }
+
+    if (g_GraphicsQueueFamilyIndex == -1)
+    {
+        printErrorMsg("no Queue Family with VkQueue Graphics Transfer Bit.\n");
+        return false;
+    }
+
+    if (g_PresentQueueFamilyIndex == -1)
+    {
+        printErrorMsg("no Queue Family with Present Queue.\n");
+        return false;
+    }
+
+    printInfoMsg("Graphics Bit on Queue Family [%d]\n", g_GraphicsQueueFamilyIndex);
+    printInfoMsg("Present Queue on Queue Family [%d]\n", g_PresentQueueFamilyIndex);
 
     return true;
 }
