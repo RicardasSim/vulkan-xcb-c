@@ -114,6 +114,8 @@ PFN_vkCreateCommandPool pfn_vkCreateCommandPool = NULL;
 PFN_vkDestroyCommandPool pfn_vkDestroyCommandPool = NULL;
 PFN_vkAllocateCommandBuffers pfn_vkAllocateCommandBuffers = NULL;
 PFN_vkFreeCommandBuffers pfn_vkFreeCommandBuffers = NULL;
+PFN_vkCreateShaderModule pfn_vkCreateShaderModule = NULL;
+PFN_vkDestroyShaderModule pfn_vkDestroyShaderModule = NULL;
 
 #ifdef DEBUG
 struct sUserData{
@@ -227,6 +229,12 @@ VkDeviceMemory g_VertexBufferDeviceMemory = VK_NULL_HANDLE;
 
 VkCommandPool g_CommandPool = 0;
 VkCommandBuffer g_CommandBuffers[1] = {NULL};
+
+char vertexShaderFileName[] = {"simple.vert.spv"};
+char fragmentShaderFileName[] = {"simple.frag.spv"};
+
+VkShaderModule g_vertShaderModule = 0;
+VkShaderModule g_fragShaderModule = 0;
 
 /*
 ==============================
@@ -571,6 +579,18 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
 
 void shutdownVulkan()
 {
+    if (g_fragShaderModule && pfn_vkDestroyShaderModule)
+    {
+        pfn_vkDestroyShaderModule(g_LogicalDevice, g_fragShaderModule, NULL);
+        printInfoMsg("vkDestroyShaderModule(), fragment shader buffer\n");
+    }
+
+    if (g_vertShaderModule && pfn_vkDestroyShaderModule)
+    {
+        pfn_vkDestroyShaderModule(g_LogicalDevice, g_vertShaderModule, NULL);
+        printInfoMsg("vkDestroyShaderModule(), vertex shader buffer\n");
+    }
+
     //at the moment only one
     if (g_CommandBuffers[0]!=NULL && pfn_vkFreeCommandBuffers)
     {
@@ -1611,6 +1631,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     GET_DEVICE_LEVEL_FUN_ADDR(vkDestroyCommandPool);
     GET_DEVICE_LEVEL_FUN_ADDR(vkAllocateCommandBuffers);
     GET_DEVICE_LEVEL_FUN_ADDR(vkFreeCommandBuffers);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkCreateShaderModule);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkDestroyShaderModule);
 
     //get device queues
     pfn_vkGetDeviceQueue(g_LogicalDevice, g_GraphicsQueueFamilyIndex, 0, &g_GraphicsQueue);
@@ -2245,6 +2267,171 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     }
 
     printInfoMsg("allocate Command Buffers OK.\n");
+
+    //load vertex buffer
+    {
+        FILE *fp;
+        size_t fileSize;
+
+        const char path[]={"shaders/"};
+
+        char *fullPath = malloc( strlen(path) + strlen(vertexShaderFileName) + 1);
+
+        if(!fullPath)
+        {
+            printErrorMsg("unable to allocate memory (20)");
+            return false;
+        }
+
+        sprintf(fullPath, "%s%s", path, vertexShaderFileName);
+
+        fp = fopen( fullPath , "rb");
+
+        free(fullPath);
+
+        if (!fp)
+        {
+	        printErrorMsg("cannot open file %s\n", vertexShaderFileName);
+		    return false;
+        }
+
+        fseek(fp, 0, SEEK_END);
+
+        fileSize = ftell(fp);
+
+        fseek(fp, 0, SEEK_SET);
+
+        printInfoMsg("%s size: %ld\n", vertexShaderFileName, fileSize);
+
+        if (fileSize==0)
+        {
+	        printErrorMsg("%s size 0.\n", vertexShaderFileName);
+            fclose(fp);
+	        return false;
+        }
+
+        char *vertShaderCode = malloc(fileSize);
+
+        if (!vertShaderCode)
+        {
+	        printErrorMsg("unable to allocate memory (17)");
+            fclose(fp);
+	        return false;
+        }
+
+        size_t retSize = fread(vertShaderCode, 1, fileSize, fp);
+
+        if (retSize!=fileSize)
+        {
+	        printErrorMsg("%s read error 0.\n", vertexShaderFileName);
+            fclose(fp);
+	        return false;
+        }
+
+        fclose(fp);
+
+        VkShaderModuleCreateInfo vertexShaderCreateInfo = {0};
+
+        vertexShaderCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        vertexShaderCreateInfo.codeSize = fileSize;
+        vertexShaderCreateInfo.pCode = (uint32_t*) vertShaderCode;
+
+        VkResult result = pfn_vkCreateShaderModule(g_LogicalDevice,
+            &vertexShaderCreateInfo,NULL,&g_vertShaderModule);
+
+        if (result != VK_SUCCESS)
+        {
+            printErrorMsg("failed to create vertex shader module.\n");
+            free(vertShaderCode);
+            return false;
+        }
+
+        free(vertShaderCode);
+    }
+
+    printInfoMsg("load vertex buffer OK.\n");
+
+    //load fragment buffer
+    {
+        FILE *fp;
+        size_t fileSize;
+        const char path[]={"shaders/"};
+
+        char *fullPath = malloc( strlen(path) + strlen(fragmentShaderFileName) + 1);
+
+        if(!fullPath)
+        {
+            printErrorMsg("unable to allocate memory (20)");
+            return false;
+        }
+
+        sprintf(fullPath, "%s%s", path, fragmentShaderFileName);
+
+        fp = fopen( fullPath, "rb");
+
+        free(fullPath);
+
+        if (!fp)
+        {
+	        printErrorMsg("cannot open file %s\n", fragmentShaderFileName);
+		    return false;
+        }
+
+        fseek(fp, 0, SEEK_END);
+
+        fileSize = ftell(fp);
+
+        fseek(fp, 0, SEEK_SET);
+
+        printInfoMsg("%s size: %ld\n", fragmentShaderFileName, fileSize);
+
+        if (fileSize==0)
+        {
+            printErrorMsg("%s size 0.\n", fragmentShaderFileName);
+            fclose(fp);
+            return false;
+        }
+
+        char *fragShaderCode = malloc(fileSize);
+
+        if (!fragShaderCode)
+        {
+		    printErrorMsg("unable to allocate memory (18)");
+            fclose(fp);
+		    return false;
+        }
+
+        size_t retSize = fread(fragShaderCode, 1, fileSize, fp);
+
+        if (retSize!=fileSize)
+        {
+	        printErrorMsg( "%s read error 0.\n", fragmentShaderFileName);
+            fclose(fp);
+	        return false;
+        }
+
+        fclose(fp);
+
+        VkShaderModuleCreateInfo vertexShaderCreateInfo = {0};
+
+        vertexShaderCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        vertexShaderCreateInfo.codeSize = fileSize;
+        vertexShaderCreateInfo.pCode = (uint32_t*) fragShaderCode;
+
+        VkResult result = pfn_vkCreateShaderModule(g_LogicalDevice,
+            &vertexShaderCreateInfo,NULL,&g_fragShaderModule);
+
+        if (result != VK_SUCCESS)
+        {
+            printErrorMsg( "failed to create vertex shader module.\n");
+            free(fragShaderCode);
+            return false;
+        }
+
+        free(fragShaderCode);
+    }
+
+    printInfoMsg("load fragment buffer OK.\n");
 
     return true;
 }
