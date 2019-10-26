@@ -83,6 +83,7 @@ PFN_vkGetDeviceProcAddr pfn_vkGetDeviceProcAddr = NULL;
 PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR pfn_vkGetPhysicalDeviceSurfaceCapabilitiesKHR = NULL;
 PFN_vkGetPhysicalDeviceSurfaceFormatsKHR pfn_vkGetPhysicalDeviceSurfaceFormatsKHR = NULL;
 PFN_vkGetPhysicalDeviceSurfacePresentModesKHR pfn_vkGetPhysicalDeviceSurfacePresentModesKHR = NULL;
+PFN_vkGetPhysicalDeviceMemoryProperties pfn_vkGetPhysicalDeviceMemoryProperties = NULL;
 
 PFN_vkDestroyDevice pfn_vkDestroyDevice = NULL;
 PFN_vkGetDeviceQueue pfn_vkGetDeviceQueue = NULL;
@@ -101,6 +102,14 @@ PFN_vkCreateRenderPass pfn_vkCreateRenderPass = NULL;
 PFN_vkDestroyRenderPass pfn_vkDestroyRenderPass = NULL;
 PFN_vkCreateFramebuffer pfn_vkCreateFramebuffer = NULL;
 PFN_vkDestroyFramebuffer pfn_vkDestroyFramebuffer = NULL;
+PFN_vkCreateBuffer pfn_vkCreateBuffer = NULL;
+PFN_vkDestroyBuffer pfn_vkDestroyBuffer = NULL;
+PFN_vkAllocateMemory pfn_vkAllocateMemory = NULL;
+PFN_vkFreeMemory pfn_vkFreeMemory = NULL;
+PFN_vkGetBufferMemoryRequirements pfn_vkGetBufferMemoryRequirements = NULL;
+PFN_vkBindBufferMemory pfn_vkBindBufferMemory = NULL;
+PFN_vkMapMemory pfn_vkMapMemory = NULL;
+PFN_vkUnmapMemory pfn_vkUnmapMemory = NULL;
 
 #ifdef DEBUG
 struct sUserData{
@@ -201,6 +210,16 @@ VkImageView *g_SwapChainImageViews = NULL;
 
 VkRenderPass g_RenderPass = NULL;
 VkFramebuffer* g_FrameBuffers = NULL;
+
+const float TORAD = M_PI / 180.0f;
+
+typedef struct{
+	float x,y,z,w;
+    float r,g,b;
+}Vertex;
+
+VkBuffer g_VertexBuffer = NULL;
+VkDeviceMemory g_VertexBufferDeviceMemory = VK_NULL_HANDLE;
 
 /*
 ==============================
@@ -545,6 +564,18 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
 
 void shutdownVulkan()
 {
+
+    if (g_VertexBufferDeviceMemory && pfn_vkFreeMemory)
+    {
+        pfn_vkFreeMemory(g_LogicalDevice, g_VertexBufferDeviceMemory, NULL);
+        printInfoMsg("free vertex buffer memory\n");
+    }
+
+    if (g_VertexBuffer && pfn_vkDestroyBuffer)
+    {
+        pfn_vkDestroyBuffer(g_LogicalDevice,g_VertexBuffer,NULL);
+        printInfoMsg("destroy vertex buffer\n");
+    }
 
     for (uint32_t i = 0; i < g_SwapChainImageCount; ++i)
     {
@@ -1049,6 +1080,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     GET_INSTANCE_LEVEL_FUN_ADDR(vkGetPhysicalDeviceSurfaceCapabilitiesKHR);
     GET_INSTANCE_LEVEL_FUN_ADDR(vkGetPhysicalDeviceSurfaceFormatsKHR);
     GET_INSTANCE_LEVEL_FUN_ADDR(vkGetPhysicalDeviceSurfacePresentModesKHR);
+    GET_INSTANCE_LEVEL_FUN_ADDR(vkGetPhysicalDeviceMemoryProperties);
 
 #ifdef DEBUG
     {
@@ -1546,6 +1578,14 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     GET_DEVICE_LEVEL_FUN_ADDR(vkDestroyRenderPass);
     GET_DEVICE_LEVEL_FUN_ADDR(vkCreateFramebuffer);
     GET_DEVICE_LEVEL_FUN_ADDR(vkDestroyFramebuffer);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkCreateBuffer);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkDestroyBuffer);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkAllocateMemory);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkFreeMemory);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkGetBufferMemoryRequirements);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkBindBufferMemory);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkMapMemory);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkUnmapMemory);
 
     //get device queues
     pfn_vkGetDeviceQueue(g_LogicalDevice, g_GraphicsQueueFamilyIndex, 0, &g_GraphicsQueue);
@@ -1958,7 +1998,6 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         attachmentReference.attachment = 0;
         attachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-        //subpass
         VkSubpassDescription subpass = {0};
 
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -1966,7 +2005,6 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         subpass.pColorAttachments = &attachmentReference;
         subpass.pDepthStencilAttachment = NULL;
 
-        //renderpass
         VkRenderPassCreateInfo renderPassCreateInfo = {0};
 
         renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -1990,7 +2028,6 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
         framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         framebufferCreateInfo.renderPass = g_RenderPass;
-        // equal to the attachment count on render pass
         framebufferCreateInfo.attachmentCount = 1;
         framebufferCreateInfo.pAttachments = frameBufferAttachments;
         framebufferCreateInfo.width = g_Width;
@@ -2028,6 +2065,121 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     }
 
     printInfoMsg("create framebuffer OK.\n");
+
+    //vertex buffer
+    {
+        static const Vertex vertices[] = {
+	        {0.0f,-0.433f,0.0f,1.0f,1.0f,0.0f,0.0f},
+	        {0.5f,0.433f,0.0f,1.0f,0.0f,1.0f,0.0f},
+	        {-0.5f,0.433f,0.0f,1.0f,0.0f,0.0f,1.0f}
+	    };
+
+        uint32_t numOfVertices = sizeof vertices/sizeof vertices[0];
+
+        printInfoMsg("numOfVertices: %zu\n", numOfVertices);
+
+        VkBufferCreateInfo vertexBufferCreateInfo ={0};
+
+        vertexBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	    vertexBufferCreateInfo.size = sizeof vertices;
+	    vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	    vertexBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	    vertexBufferCreateInfo.queueFamilyIndexCount = 0;
+	    vertexBufferCreateInfo.pQueueFamilyIndices = NULL;
+
+	    VkResult result = pfn_vkCreateBuffer(g_LogicalDevice,
+            &vertexBufferCreateInfo, NULL, &g_VertexBuffer);
+
+	    if (result != VK_SUCCESS)
+        {
+		    printErrorMsg("vertex buffer, vkCreateBuffer().\n");
+		    return false;
+        }
+
+        VkMemoryRequirements vertexBufferMemoryRequirements = {0};
+
+        pfn_vkGetBufferMemoryRequirements(g_LogicalDevice,
+            g_VertexBuffer, &vertexBufferMemoryRequirements);
+
+        printInfoMsg("Buffer Memory Requirements size: %zu\n",
+            vertexBufferMemoryRequirements.size );
+        printInfoMsg("Buffer Memory Requirements alignment: %zu\n",
+            vertexBufferMemoryRequirements.alignment );
+
+        VkMemoryAllocateInfo memoryAllocateInfo = {0};
+
+        memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        memoryAllocateInfo.pNext = NULL;
+        memoryAllocateInfo.allocationSize = vertexBufferMemoryRequirements.size;
+        memoryAllocateInfo.memoryTypeIndex = 0;
+
+        VkPhysicalDeviceMemoryProperties memoryProperties;
+
+        pfn_vkGetPhysicalDeviceMemoryProperties(g_SelectedPhysicalDevice, &memoryProperties);
+
+        bool flag = false;
+
+        for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; ++i)
+        {
+            VkMemoryType memoryType = memoryProperties.memoryTypes[i];
+
+            if (
+                (vertexBufferMemoryRequirements.memoryTypeBits & (1 << i)) &&
+                (memoryType.propertyFlags & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                                        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
+            )
+            {
+                memoryAllocateInfo.memoryTypeIndex = i;
+                flag = true;
+            }
+        }
+
+        if (!flag)
+        {
+		    printErrorMsg("vertex buffer, failed to find suitable memory type!\n");
+		    return false;
+        }
+
+        result = pfn_vkAllocateMemory(g_LogicalDevice,
+            &memoryAllocateInfo, NULL, &g_VertexBufferDeviceMemory);
+
+        if (result != VK_SUCCESS)
+        {
+            printErrorMsg("unable to allocate device memory (1)\n");
+            return false;
+        }
+
+        printInfoMsg("vertex buffer vkAllocateMemory OK.\n");
+
+        result = pfn_vkBindBufferMemory(g_LogicalDevice,
+            g_VertexBuffer, g_VertexBufferDeviceMemory, 0);
+
+	    if (result != VK_SUCCESS)
+        {
+            printErrorMsg("vertex buffer vkBindBufferMemory().\n");
+            return false;
+        }
+
+        printInfoMsg("vertex buffer vkBindBufferMemory OK.\n");
+
+        void* mapMem;
+
+        result = pfn_vkMapMemory(g_LogicalDevice,
+            g_VertexBufferDeviceMemory, 0, VK_WHOLE_SIZE, 0, &mapMem);
+
+        if (result != VK_SUCCESS)
+        {
+            printErrorMsg("vertex buffer vkMapMemory.\n");
+            return false;
+        }
+
+        printInfoMsg("vertex buffer vkMapMemory OK.\n");
+
+        memcpy(mapMem,vertices,sizeof vertices);
+
+        pfn_vkUnmapMemory(g_LogicalDevice, g_VertexBufferDeviceMemory);
+
+    }
 
     return true;
 }
@@ -2208,11 +2360,13 @@ int main(int argc, char **argv)
     xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(connection, cookie1, 0);
     xcb_intern_atom_cookie_t cookie2 = xcb_intern_atom(connection, 0, 16,"WM_DELETE_WINDOW");
     atomReply = xcb_intern_atom_reply(connection, cookie2, 0);
-    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, (*reply).atom, 4, 32, 1, &(*atomReply).atom);
+    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
+        (*reply).atom, 4, 32, 1, &(*atomReply).atom);
     free(reply);
 
     /* set title of the window */
-    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, strlen (title), title);
+    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
+        XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, strlen (title), title);
 
     cookieMap = xcb_map_window_checked(connection, window);
 
