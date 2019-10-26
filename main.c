@@ -80,6 +80,7 @@ PFN_vkCreateDevice pfn_vkCreateDevice = NULL;
 PFN_vkGetDeviceProcAddr pfn_vkGetDeviceProcAddr = NULL;
 
 PFN_vkDestroyDevice pfn_vkDestroyDevice = NULL;
+PFN_vkGetDeviceQueue pfn_vkGetDeviceQueue = NULL;
 
 #ifdef DEBUG
 struct sUserData{
@@ -154,6 +155,9 @@ int32_t g_GraphicsQueueFamilyIndex = -1;
 int32_t g_PresentQueueFamilyIndex = -1;
 
 VkDevice g_LogicalDevice = NULL;
+
+VkQueue g_GraphicsQueue = VK_NULL_HANDLE;
+VkQueue g_PresentQueue = VK_NULL_HANDLE;
 
 /*
 ==============================
@@ -1399,6 +1403,21 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
     //get device level fnc address
     GET_DEVICE_LEVEL_FUN_ADDR(vkDestroyDevice);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkGetDeviceQueue);
+
+    //get device queues
+    pfn_vkGetDeviceQueue(g_LogicalDevice, g_GraphicsQueueFamilyIndex, 0, &g_GraphicsQueue);
+
+    if (g_GraphicsQueueFamilyIndex != g_PresentQueueFamilyIndex)
+    {
+        pfn_vkGetDeviceQueue(g_LogicalDevice, g_PresentQueueFamilyIndex, 0, &g_PresentQueue);
+    }
+    else
+    {
+        g_PresentQueue = g_GraphicsQueue;
+    }
+
+
 
     return true;
 }
