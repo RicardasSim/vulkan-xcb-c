@@ -178,6 +178,11 @@ VkFence fenceArr[SWAP_CHAIN_IMAGE_COUNT] = {NULL};
 VkSurfaceFormatKHR g_SurfaceFormat = {VK_FORMAT_B8G8R8A8_UNORM,VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
 VkPresentModeKHR g_PresentMode = VK_PRESENT_MODE_FIFO_KHR;
 
+VkExtent2D g_SwapChainExtent;
+
+uint32_t g_ImageCount = 0;
+
+
 /*
 ==============================
  printInfoMsg();
@@ -1683,7 +1688,31 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
             free(presentModes);
         }
+    }
 
+    //choose SwapChain Extent
+    {
+        if (surfaceCapabilities.currentExtent.width != UINT32_MAX )
+        {
+            g_SwapChainExtent = surfaceCapabilities.currentExtent;
+        }
+        else
+        {
+            g_SwapChainExtent.width = maxValU(surfaceCapabilities.minImageExtent.width,surfaceCapabilities.maxImageExtent.width);
+            g_SwapChainExtent.height = maxValU(surfaceCapabilities.minImageExtent.height,surfaceCapabilities.maxImageExtent.height);
+        }
+
+        printInfoMsg("SwapChain Extent width: %d\n", g_SwapChainExtent.width);
+        printInfoMsg("SwapChain Extent height: %d\n", g_SwapChainExtent.height);
+    }
+
+    //image count
+    {
+        g_ImageCount = 2;
+        if (g_ImageCount<surfaceCapabilities.minImageCount) g_ImageCount = surfaceCapabilities.minImageCount;
+        if (g_ImageCount>surfaceCapabilities.maxImageCount) g_ImageCount = surfaceCapabilities.maxImageCount;
+
+        printInfoMsg("image count: %d\n", g_ImageCount);
     }
 
     return true;
