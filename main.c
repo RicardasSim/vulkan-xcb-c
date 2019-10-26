@@ -2226,6 +2226,26 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
     printInfoMsg("create CommandPool OK.\n");
 
+    //allocate command buffers
+    {
+        VkCommandBufferAllocateInfo commandBufferAllocateInfo = {0};
+
+        commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        commandBufferAllocateInfo.commandPool = g_CommandPool;
+        commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        commandBufferAllocateInfo.commandBufferCount = 1;
+
+        VkResult result = pfn_vkAllocateCommandBuffers(g_LogicalDevice, &commandBufferAllocateInfo, g_CommandBuffers);
+
+        if (result != VK_SUCCESS)
+        {
+			printErrorMsg("cannot allocate Command Buffers.\n");
+			return false;
+		}
+    }
+
+    printInfoMsg("allocate Command Buffers OK.\n");
+
     return true;
 }
 
