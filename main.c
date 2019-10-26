@@ -54,6 +54,8 @@ if (pfn_##name == NULL) \
 #define INIT_WIDTH 800
 #define INIT_HEIGHT 600
 
+#define SWAP_CHAIN_IMAGE_COUNT 2
+
 int g_Width = INIT_WIDTH;
 int g_Height = INIT_HEIGHT;
 
@@ -81,6 +83,8 @@ PFN_vkGetDeviceProcAddr pfn_vkGetDeviceProcAddr = NULL;
 
 PFN_vkDestroyDevice pfn_vkDestroyDevice = NULL;
 PFN_vkGetDeviceQueue pfn_vkGetDeviceQueue = NULL;
+PFN_vkCreateSemaphore pfn_vkCreateSemaphore = NULL;
+PFN_vkDestroySemaphore pfn_vkDestroySemaphore = NULL;
 
 #ifdef DEBUG
 struct sUserData{
@@ -158,6 +162,9 @@ VkDevice g_LogicalDevice = NULL;
 
 VkQueue g_GraphicsQueue = VK_NULL_HANDLE;
 VkQueue g_PresentQueue = VK_NULL_HANDLE;
+
+VkSemaphore g_semaphoreImageAvailableArr[SWAP_CHAIN_IMAGE_COUNT] = {NULL};
+VkSemaphore g_semaphoreRenderFinishedArr[SWAP_CHAIN_IMAGE_COUNT] = {NULL};
 
 /*
 ==============================
@@ -502,6 +509,28 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
 
 void shutdownVulkan()
 {
+
+    if(pfn_vkDestroySemaphore)
+    {
+        for(uint32_t i = 0; i < SWAP_CHAIN_IMAGE_COUNT; ++i)
+        {
+            if (g_semaphoreImageAvailableArr[i])
+            {
+                pfn_vkDestroySemaphore(g_LogicalDevice, g_semaphoreImageAvailableArr[i], NULL);
+                printInfoMsg("vkDestroySemaphore() [%d] (image available)\n", i);
+            }
+        }
+
+        for(uint32_t i = 0; i < SWAP_CHAIN_IMAGE_COUNT; ++i)
+        {
+            if (g_semaphoreRenderFinishedArr[i])
+            {
+                pfn_vkDestroySemaphore(g_LogicalDevice, g_semaphoreRenderFinishedArr[i], NULL);
+                printInfoMsg("vkDestroySemaphore() [%d] (render finished)\n", i);
+            }
+        }
+    }
+
     if (g_LogicalDevice && pfn_vkDestroyDevice)
     {
         pfn_vkDestroyDevice(g_LogicalDevice, NULL);
@@ -1404,6 +1433,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     //get device level fnc address
     GET_DEVICE_LEVEL_FUN_ADDR(vkDestroyDevice);
     GET_DEVICE_LEVEL_FUN_ADDR(vkGetDeviceQueue);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkCreateSemaphore);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkDestroySemaphore);
 
     //get device queues
     pfn_vkGetDeviceQueue(g_LogicalDevice, g_GraphicsQueueFamilyIndex, 0, &g_GraphicsQueue);
@@ -1417,7 +1448,33 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         g_PresentQueue = g_GraphicsQueue;
     }
 
+    //create semaphores
+    {
+        VkSemaphoreCreateInfo semaphoreCreateInfo = {0};
 
+        semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+        for(uint32_t i = 0; i < SWAP_CHAIN_IMAGE_COUNT; ++i)
+        {
+            VkResult result = pfn_vkCreateSemaphore (g_LogicalDevice, &semaphoreCreateInfo, NULL, &g_semaphoreImageAvailableArr[i]);
+
+            if (result != VK_SUCCESS)
+            {
+                printErrorMsg("cannot create semaphore (image available) [%d].\n", i);
+                return false;
+            }
+
+            result = pfn_vkCreateSemaphore (g_LogicalDevice, &semaphoreCreateInfo, NULL, &g_semaphoreRenderFinishedArr[i]);
+
+            if (result != VK_SUCCESS)
+            {
+                printErrorMsg("cannot create semaphore (render finished) [%d].\n", i);
+                return false;
+            }
+        }
+    }
+
+    printInfoMsg("create semaphores: OK.");
 
     return true;
 }
