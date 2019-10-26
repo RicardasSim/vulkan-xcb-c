@@ -76,8 +76,10 @@ PFN_vkEnumerateDeviceLayerProperties pfn_vkEnumerateDeviceLayerProperties = NULL
 PFN_vkEnumerateDeviceExtensionProperties pfn_vkEnumerateDeviceExtensionProperties = NULL;
 PFN_vkGetPhysicalDeviceQueueFamilyProperties pfn_vkGetPhysicalDeviceQueueFamilyProperties = NULL;
 PFN_vkGetPhysicalDeviceSurfaceSupportKHR pfn_vkGetPhysicalDeviceSurfaceSupportKHR = NULL;
-
+PFN_vkCreateDevice pfn_vkCreateDevice = NULL;
 PFN_vkGetDeviceProcAddr pfn_vkGetDeviceProcAddr = NULL;
+
+PFN_vkDestroyDevice pfn_vkDestroyDevice = NULL;
 
 #ifdef DEBUG
 struct sUserData{
@@ -150,6 +152,8 @@ uint32_t g_DeviceExtArrayCount = 0;
 
 int32_t g_GraphicsQueueFamilyIndex = -1;
 int32_t g_PresentQueueFamilyIndex = -1;
+
+VkDevice g_LogicalDevice = NULL;
 
 /*
 ==============================
@@ -494,6 +498,12 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
 
 void shutdownVulkan()
 {
+    if (g_LogicalDevice && pfn_vkDestroyDevice)
+    {
+        pfn_vkDestroyDevice(g_LogicalDevice, NULL);
+        printInfoMsg("destroy a logical device, vkDestroyDevice()\n");
+    }
+
     if (g_DeviceExtArrayCount)
     {
         for (uint32_t i = 0; i < g_DeviceExtArrayCount; ++i)
@@ -906,6 +916,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     GET_INSTANCE_LEVEL_FUN_ADDR(vkEnumerateDeviceExtensionProperties);
     GET_INSTANCE_LEVEL_FUN_ADDR(vkGetPhysicalDeviceQueueFamilyProperties);
     GET_INSTANCE_LEVEL_FUN_ADDR(vkGetPhysicalDeviceSurfaceSupportKHR);
+    GET_INSTANCE_LEVEL_FUN_ADDR(vkCreateDevice);
+    GET_INSTANCE_LEVEL_FUN_ADDR(vkGetDeviceProcAddr);
 
 #ifdef DEBUG
     {
@@ -1324,6 +1336,69 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
     printInfoMsg("Graphics Bit on Queue Family [%d]\n", g_GraphicsQueueFamilyIndex);
     printInfoMsg("Present Queue on Queue Family [%d]\n", g_PresentQueueFamilyIndex);
+
+    //create logical device
+    {
+        int32_t queueInfoCount;
+
+        if (g_GraphicsQueueFamilyIndex != g_PresentQueueFamilyIndex) queueInfoCount = 2;
+        else queueInfoCount = 1;
+
+        VkDeviceQueueCreateInfo queueCreateInfo[queueInfoCount];
+
+        memset( queueCreateInfo, 0, sizeof queueCreateInfo);
+
+        float queuePriorities[queueInfoCount];
+
+        queuePriorities[0] = 1.0f;
+
+        queueCreateInfo[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfo[0].pNext = NULL;
+        queueCreateInfo[0].queueFamilyIndex = g_GraphicsQueueFamilyIndex;
+        queueCreateInfo[0].queueCount = 1;
+        queueCreateInfo[0].pQueuePriorities = queuePriorities;
+
+        if (queueInfoCount==2)
+        {
+            queuePriorities[1] = 1.0f;
+
+            queueCreateInfo[1].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueCreateInfo[1].pNext = NULL;
+            queueCreateInfo[1].queueFamilyIndex = g_PresentQueueFamilyIndex;
+            queueCreateInfo[1].queueCount = 1;
+            queueCreateInfo[1].pQueuePriorities = queuePriorities;
+        }
+
+        VkDeviceCreateInfo deviceCreateInfo = {0};
+
+        deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        deviceCreateInfo.pNext = NULL;
+        deviceCreateInfo.queueCreateInfoCount = queueInfoCount;
+        deviceCreateInfo.pQueueCreateInfos = queueCreateInfo;
+        deviceCreateInfo.enabledLayerCount = g_DeviceLayersArrayCount;
+        if (g_DeviceExtArrayCount) deviceCreateInfo.ppEnabledLayerNames =
+            (const char* const*) g_DeviceLayersArray;
+        else deviceCreateInfo.ppEnabledLayerNames = NULL;
+        deviceCreateInfo.enabledExtensionCount = g_DeviceExtArrayCount;
+        if (g_DeviceExtArrayCount) deviceCreateInfo.ppEnabledExtensionNames =
+            (const char* const*) g_DeviceExtArray;
+        else deviceCreateInfo.ppEnabledExtensionNames = NULL;
+        deviceCreateInfo.pEnabledFeatures = NULL;
+
+        VkResult result = pfn_vkCreateDevice( g_SelectedPhysicalDevice,
+            &deviceCreateInfo, NULL, &g_LogicalDevice);
+
+        if (result != VK_SUCCESS)
+        {
+            printErrorMsg("failed to create logical device.\n");
+            return false;
+        }
+    }
+
+    printInfoMsg("Create Logical Device. OK.\n");
+
+    //get device level fnc address
+    GET_DEVICE_LEVEL_FUN_ADDR(vkDestroyDevice);
 
     return true;
 }
