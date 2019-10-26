@@ -127,6 +127,17 @@ PFN_vkCreatePipelineLayout pfn_vkCreatePipelineLayout = NULL;
 PFN_vkDestroyPipelineLayout pfn_vkDestroyPipelineLayout = NULL;
 PFN_vkCreateGraphicsPipelines pfn_vkCreateGraphicsPipelines = NULL;
 PFN_vkDestroyPipeline pfn_vkDestroyPipeline = NULL;
+PFN_vkAcquireNextImageKHR pfn_vkAcquireNextImageKHR = NULL;
+PFN_vkBeginCommandBuffer pfn_vkBeginCommandBuffer = NULL;
+PFN_vkCmdBeginRenderPass pfn_vkCmdBeginRenderPass = NULL;
+PFN_vkCmdBindPipeline pfn_vkCmdBindPipeline = NULL;
+PFN_vkCmdBindDescriptorSets pfn_vkCmdBindDescriptorSets = NULL;
+PFN_vkCmdBindVertexBuffers pfn_vkCmdBindVertexBuffers = NULL;
+PFN_vkCmdEndRenderPass pfn_vkCmdEndRenderPass = NULL;
+PFN_vkEndCommandBuffer pfn_vkEndCommandBuffer = NULL;
+PFN_vkQueueSubmit pfn_vkQueueSubmit = NULL;
+PFN_vkQueuePresentKHR pfn_vkQueuePresentKHR = NULL;
+PFN_vkCmdDraw pfn_vkCmdDraw = NULL;
 
 #ifdef DEBUG
 struct sUserData{
@@ -276,6 +287,8 @@ uint32_t descriptorSetsCount = 0;
 
 VkPipeline g_Pipeline = NULL;
 VkPipelineLayout g_PipelineLayout = NULL;
+
+int32_t currentFrame = 0;
 
 /*
 ==============================
@@ -1728,6 +1741,17 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     GET_DEVICE_LEVEL_FUN_ADDR(vkDestroyPipelineLayout);
     GET_DEVICE_LEVEL_FUN_ADDR(vkCreateGraphicsPipelines);
     GET_DEVICE_LEVEL_FUN_ADDR(vkDestroyPipeline);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkAcquireNextImageKHR);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkBeginCommandBuffer);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkCmdBeginRenderPass);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkCmdBindPipeline);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkCmdBindDescriptorSets);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkCmdBindVertexBuffers);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkCmdEndRenderPass);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkEndCommandBuffer);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkQueueSubmit);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkQueuePresentKHR);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkCmdDraw);
 
     //get device queues
     pfn_vkGetDeviceQueue(g_LogicalDevice, g_GraphicsQueueFamilyIndex, 0, &g_GraphicsQueue);
@@ -2909,7 +2933,7 @@ void updateData()
     //float tangentOfHalfFOV = (float) tanf(fieldOfView * TORAD * 0.5f);
     float tVal = 1.0f / (float) tanf(fieldOfView * TORAD * 0.5f);
 
-    projectionMatrix[0][0]= tVal * aspectRatio; //1.0f / tangentOfHalfFOV * aspectRatio;
+    projectionMatrix[0][0]= tVal / aspectRatio; //1.0f / (tangentOfHalfFOV * aspectRatio);
     projectionMatrix[0][1]=0;
     projectionMatrix[0][2]=0;
     projectionMatrix[0][3]=0;
@@ -2920,7 +2944,7 @@ void updateData()
     projectionMatrix[2][0]=0;
     projectionMatrix[2][1]=0;
     projectionMatrix[2][2]= (-nearZ - farZ ) / rangeOfZ;
-    projectionMatrix[2][3]= ( 2.0f * nearZ * farZ ) / rangeOfZ;
+    projectionMatrix[2][3]= 2.0f * nearZ * farZ / rangeOfZ;
     projectionMatrix[3][0]=0;
     projectionMatrix[3][1]=0;
     projectionMatrix[3][2]=1;
