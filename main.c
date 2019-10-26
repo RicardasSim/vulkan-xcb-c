@@ -94,6 +94,7 @@ PFN_vkWaitForFences pfn_vkWaitForFences = NULL;
 PFN_vkDestroyFence pfn_vkDestroyFence = NULL;
 PFN_vkCreateSwapchainKHR pfn_vkCreateSwapchainKHR = NULL;
 PFN_vkDestroySwapchainKHR pfn_vkDestroySwapchainKHR = NULL;
+PFN_vkGetSwapchainImagesKHR pfn_vkGetSwapchainImagesKHR = NULL;
 
 #ifdef DEBUG
 struct sUserData{
@@ -185,6 +186,10 @@ VkExtent2D g_SwapChainExtent;
 uint32_t g_ImageCount = 0;
 
 VkSwapchainKHR g_SwapChain = NULL;
+
+uint32_t g_SwapChainImageCount = 0;
+
+VkImage* g_SwapChainImages = NULL;
 
 /*
 ==============================
@@ -529,6 +534,11 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
 
 void shutdownVulkan()
 {
+    if (g_SwapChainImages)
+    {
+        free(g_SwapChainImages);
+        printInfoMsg("free SwapChain images.\n");
+    }
 
     if (g_SwapChain && pfn_vkDestroySwapchainKHR)
     {
@@ -1482,6 +1492,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     GET_DEVICE_LEVEL_FUN_ADDR(vkDestroyFence);
     GET_DEVICE_LEVEL_FUN_ADDR(vkCreateSwapchainKHR);
     GET_DEVICE_LEVEL_FUN_ADDR(vkDestroySwapchainKHR);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkGetSwapchainImagesKHR);
 
     //get device queues
     pfn_vkGetDeviceQueue(g_LogicalDevice, g_GraphicsQueueFamilyIndex, 0, &g_GraphicsQueue);
@@ -1775,6 +1786,46 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
     printInfoMsg("create SwapChain OK.\n");
 
+    //images
+    {
+        VkResult result = pfn_vkGetSwapchainImagesKHR( g_LogicalDevice,
+            g_SwapChain, &g_SwapChainImageCount, NULL );
+
+        if (result != VK_SUCCESS)
+        {
+            printErrorMsg("vkGetSwapchainImagesKHR() (1).\n");
+            return false;
+        }
+
+        printInfoMsg("SwapChain image count %d\n", g_SwapChainImageCount);
+
+        if (g_SwapChainImageCount>1)
+        {
+            g_SwapChainImages = (VkImage*) malloc(g_SwapChainImageCount * sizeof(VkImage));
+
+            if (g_SwapChainImages==NULL)
+            {
+                printErrorMsg("unable to allocate memory (14)\n");
+                return false;
+            }
+
+            // link the images to the swapchain
+            result = pfn_vkGetSwapchainImagesKHR(g_LogicalDevice, g_SwapChain, &g_SwapChainImageCount, g_SwapChainImages);
+
+            if (result != VK_SUCCESS)
+            {
+                printErrorMsg("vkGetSwapchainImagesKHR() (2).\n");
+                return false;
+            }
+        }
+        else
+        {
+            printErrorMsg("SwapChain image count less than 1.\n");
+            return false;
+        }
+
+        printInfoMsg("vkGetSwapchainImagesKHR() OK.\n");
+    }
 
 
     return true;
