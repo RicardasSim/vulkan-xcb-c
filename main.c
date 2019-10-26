@@ -174,6 +174,8 @@ VkSemaphore g_semaphoreRenderFinishedArr[SWAP_CHAIN_IMAGE_COUNT] = {NULL};
 
 VkFence fenceArr[SWAP_CHAIN_IMAGE_COUNT] = {NULL};
 
+VkSurfaceFormatKHR g_SurfaceFormat = {VK_FORMAT_B8G8R8A8_UNORM,VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
+
 /*
 ==============================
  printInfoMsg();
@@ -1481,7 +1483,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
         for(uint32_t i = 0; i < SWAP_CHAIN_IMAGE_COUNT; ++i)
         {
-            VkResult result = pfn_vkCreateSemaphore (g_LogicalDevice, &semaphoreCreateInfo, NULL, &g_semaphoreImageAvailableArr[i]);
+            VkResult result = pfn_vkCreateSemaphore (g_LogicalDevice, &semaphoreCreateInfo,
+                NULL, &g_semaphoreImageAvailableArr[i]);
 
             if (result != VK_SUCCESS)
             {
@@ -1489,7 +1492,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
                 return false;
             }
 
-            result = pfn_vkCreateSemaphore (g_LogicalDevice, &semaphoreCreateInfo, NULL, &g_semaphoreRenderFinishedArr[i]);
+            result = pfn_vkCreateSemaphore (g_LogicalDevice, &semaphoreCreateInfo, NULL,
+                &g_semaphoreRenderFinishedArr[i]);
 
             if (result != VK_SUCCESS)
             {
@@ -1526,7 +1530,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     VkSurfaceCapabilitiesKHR surfaceCapabilities = {0};
 
     {
-        VkResult result = pfn_vkGetPhysicalDeviceSurfaceCapabilitiesKHR(g_SelectedPhysicalDevice, g_Surface, &surfaceCapabilities );
+        VkResult result = pfn_vkGetPhysicalDeviceSurfaceCapabilitiesKHR(g_SelectedPhysicalDevice,
+            g_Surface, &surfaceCapabilities );
 
         if (result != VK_SUCCESS)
         {
@@ -1547,6 +1552,74 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         printInfoMsg("surfaceCapabilities.currentTransform %08x\n",surfaceCapabilities.currentTransform);
         printInfoMsg("surfaceCapabilities.supportedCompositeAlpha %08x\n",surfaceCapabilities.supportedCompositeAlpha);
         printInfoMsg("surfaceCapabilities.supportedUsageFlags %08x\n",surfaceCapabilities.supportedUsageFlags);
+    }
+
+    //get surface formats
+    {
+        uint32_t surfaceFormatCount = 0;
+
+        VkResult result = pfn_vkGetPhysicalDeviceSurfaceFormatsKHR(g_SelectedPhysicalDevice,
+            g_Surface, &surfaceFormatCount, NULL);
+
+        if (result != VK_SUCCESS)
+        {
+            printErrorMsg("vkGetPhysicalDeviceSurfaceFormatsKHR() (1).\n");
+            return false;
+        }
+
+        printInfoMsg("surface format count %d\n",surfaceFormatCount);
+
+        if (surfaceFormatCount>0)
+        {
+
+            VkSurfaceFormatKHR* surfaceFormats = (VkSurfaceFormatKHR*) malloc(surfaceFormatCount * sizeof(VkSurfaceFormatKHR));
+
+            if (surfaceFormats==NULL)
+            {
+                printErrorMsg("unable to allocate memory (12)\n");
+                return false;
+            }
+
+            result = pfn_vkGetPhysicalDeviceSurfaceFormatsKHR(g_SelectedPhysicalDevice, g_Surface, &surfaceFormatCount, surfaceFormats);
+
+            if (result != VK_SUCCESS)
+            {
+                free(surfaceFormats);
+                printErrorMsg("vkGetPhysicalDeviceSurfaceFormatsKHR() (2).\n");
+                return false;
+            }
+
+            printInfoMsg("SurfaceFormats:\n");
+
+            for (uint32_t i = 0; i < surfaceFormatCount; ++i)
+            {
+                printf("\tformat (%d): %s\n", i, str_VkFormat(surfaceFormats[i].format));
+                printf("\tcolor space (%d): %s\n", i, str_VkColorSpaceKHR(surfaceFormats[i].colorSpace));
+            }
+
+            //choose SwapChain Surface Format
+
+            if (surfaceFormatCount == 1 && surfaceFormats[0].format == VK_FORMAT_UNDEFINED)
+            {
+                g_SurfaceFormat.format = VK_FORMAT_B8G8R8A8_UNORM;
+                g_SurfaceFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+            }
+
+            for (uint32_t i = 0; i < surfaceFormatCount; ++i)
+            {
+                if (surfaceFormats[i].format == VK_FORMAT_B8G8R8A8_UNORM && surfaceFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+                {
+                    g_SurfaceFormat.format = VK_FORMAT_B8G8R8A8_UNORM;
+                    g_SurfaceFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+                }
+            }
+
+            printInfoMsg("g_SurfaceFormat.format: %s\n",str_VkFormat(g_SurfaceFormat.format));
+            printInfoMsg("g_SurfaceFormat.colorSpace: %s\n",str_VkColorSpaceKHR(g_SurfaceFormat.colorSpace));
+
+            free(surfaceFormats);
+
+        }
     }
 
     return true;
