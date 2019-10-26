@@ -97,6 +97,10 @@ PFN_vkDestroySwapchainKHR pfn_vkDestroySwapchainKHR = NULL;
 PFN_vkGetSwapchainImagesKHR pfn_vkGetSwapchainImagesKHR = NULL;
 PFN_vkCreateImageView pfn_vkCreateImageView = NULL;
 PFN_vkDestroyImageView pfn_vkDestroyImageView = NULL;
+PFN_vkCreateRenderPass pfn_vkCreateRenderPass = NULL;
+PFN_vkDestroyRenderPass pfn_vkDestroyRenderPass = NULL;
+PFN_vkCreateFramebuffer pfn_vkCreateFramebuffer = NULL;
+PFN_vkDestroyFramebuffer pfn_vkDestroyFramebuffer = NULL;
 
 #ifdef DEBUG
 struct sUserData{
@@ -194,6 +198,9 @@ uint32_t g_SwapChainImageCount = 0;
 VkImage* g_SwapChainImages = NULL;
 
 VkImageView *g_SwapChainImageViews = NULL;
+
+VkRenderPass g_RenderPass = NULL;
+VkFramebuffer* g_FrameBuffers = NULL;
 
 /*
 ==============================
@@ -538,6 +545,28 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
 
 void shutdownVulkan()
 {
+
+    for (uint32_t i = 0; i < g_SwapChainImageCount; ++i)
+    {
+        if (g_FrameBuffers[i])
+        {
+            pfn_vkDestroyFramebuffer(g_LogicalDevice, g_FrameBuffers[i], NULL);
+            printInfoMsg("free vkDestroyFramebuffer() (%d)\n",i);
+        }
+    }
+
+    if (g_FrameBuffers)
+    {
+        free(g_FrameBuffers);
+        printInfoMsg("free g_FrameBuffers\n");
+    }
+
+    if (g_RenderPass)
+    {
+        pfn_vkDestroyRenderPass( g_LogicalDevice, g_RenderPass, NULL);
+        printInfoMsg("vkDestroyRenderPass()\n");
+
+    }
 
     if (g_SwapChainImageViews && pfn_vkDestroyImageView)
     {
@@ -1513,6 +1542,10 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     GET_DEVICE_LEVEL_FUN_ADDR(vkGetSwapchainImagesKHR);
     GET_DEVICE_LEVEL_FUN_ADDR(vkCreateImageView);
     GET_DEVICE_LEVEL_FUN_ADDR(vkDestroyImageView);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkCreateRenderPass);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkDestroyRenderPass);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkCreateFramebuffer);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkDestroyFramebuffer);
 
     //get device queues
     pfn_vkGetDeviceQueue(g_LogicalDevice, g_GraphicsQueueFamilyIndex, 0, &g_GraphicsQueue);
@@ -1623,7 +1656,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         if (surfaceFormatCount>0)
         {
 
-            VkSurfaceFormatKHR* surfaceFormats = (VkSurfaceFormatKHR*) malloc(surfaceFormatCount * sizeof(VkSurfaceFormatKHR));
+            VkSurfaceFormatKHR* surfaceFormats =
+                (VkSurfaceFormatKHR*) malloc(surfaceFormatCount * sizeof(VkSurfaceFormatKHR));
 
             if (surfaceFormats==NULL)
             {
@@ -1631,7 +1665,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
                 return false;
             }
 
-            result = pfn_vkGetPhysicalDeviceSurfaceFormatsKHR(g_SelectedPhysicalDevice, g_Surface, &surfaceFormatCount, surfaceFormats);
+            result = pfn_vkGetPhysicalDeviceSurfaceFormatsKHR(g_SelectedPhysicalDevice,
+                g_Surface, &surfaceFormatCount, surfaceFormats);
 
             if (result != VK_SUCCESS)
             {
@@ -1645,7 +1680,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
             for (uint32_t i = 0; i < surfaceFormatCount; ++i)
             {
                 printf("\tformat (%d): %s\n", i, str_VkFormat(surfaceFormats[i].format));
-                printf("\tcolor space (%d): %s\n", i, str_VkColorSpaceKHR(surfaceFormats[i].colorSpace));
+                printf("\tcolor space (%d): %s\n", i,
+                    str_VkColorSpaceKHR(surfaceFormats[i].colorSpace));
             }
 
             //choose SwapChain Surface Format
@@ -1658,7 +1694,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
             for (uint32_t i = 0; i < surfaceFormatCount; ++i)
             {
-                if (surfaceFormats[i].format == VK_FORMAT_B8G8R8A8_UNORM && surfaceFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+                if (surfaceFormats[i].format == VK_FORMAT_B8G8R8A8_UNORM &&
+                    surfaceFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
                 {
                     g_SurfaceFormat.format = VK_FORMAT_B8G8R8A8_UNORM;
                     g_SurfaceFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
@@ -1676,7 +1713,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     {
         uint32_t presentModeCount = 0;
 
-        VkResult result = pfn_vkGetPhysicalDeviceSurfacePresentModesKHR(g_SelectedPhysicalDevice, g_Surface, &presentModeCount, NULL);
+        VkResult result = pfn_vkGetPhysicalDeviceSurfacePresentModesKHR(g_SelectedPhysicalDevice,
+            g_Surface, &presentModeCount, NULL);
 
         if (result != VK_SUCCESS)
         {
@@ -1689,7 +1727,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         if (presentModeCount>0)
         {
 
-            VkPresentModeKHR* presentModes = (VkPresentModeKHR*) malloc(presentModeCount * sizeof(VkPresentModeKHR));
+            VkPresentModeKHR* presentModes =
+                (VkPresentModeKHR*) malloc(presentModeCount * sizeof(VkPresentModeKHR));
 
             if (presentModes==NULL)
             {
@@ -1697,7 +1736,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
                 return false;
             }
 
-            result = pfn_vkGetPhysicalDeviceSurfacePresentModesKHR(g_SelectedPhysicalDevice, g_Surface, &presentModeCount, presentModes);
+            result = pfn_vkGetPhysicalDeviceSurfacePresentModesKHR(g_SelectedPhysicalDevice,
+                g_Surface, &presentModeCount, presentModes);
 
             if (result != VK_SUCCESS)
             {
@@ -1899,6 +1939,95 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     }
 
      printInfoMsg("create image view OK.\n");
+
+    //framebuffer
+    {
+        VkAttachmentDescription attachmentDescription[1] = {0};
+
+        attachmentDescription[0].format = VK_FORMAT_B8G8R8A8_UNORM;
+        attachmentDescription[0].samples = VK_SAMPLE_COUNT_1_BIT;
+        attachmentDescription[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        attachmentDescription[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        attachmentDescription[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachmentDescription[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        attachmentDescription[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        attachmentDescription[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+        VkAttachmentReference attachmentReference = {0};
+
+        attachmentReference.attachment = 0;
+        attachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+        //subpass
+        VkSubpassDescription subpass = {0};
+
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.colorAttachmentCount = 1;
+        subpass.pColorAttachments = &attachmentReference;
+        subpass.pDepthStencilAttachment = NULL;
+
+        //renderpass
+        VkRenderPassCreateInfo renderPassCreateInfo = {0};
+
+        renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        renderPassCreateInfo.attachmentCount = 1;
+        renderPassCreateInfo.pAttachments = attachmentDescription;
+        renderPassCreateInfo.subpassCount = 1;
+        renderPassCreateInfo.pSubpasses = &subpass;
+
+        VkResult result = pfn_vkCreateRenderPass(g_LogicalDevice,
+            &renderPassCreateInfo, NULL, &g_RenderPass);
+
+		if (result != VK_SUCCESS)
+        {
+			printErrorMsg("cannot create Render Pass.\n");
+			return false;
+		}
+
+        VkImageView frameBufferAttachments[1] = {0};
+
+        VkFramebufferCreateInfo framebufferCreateInfo = {0};
+
+        framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebufferCreateInfo.renderPass = g_RenderPass;
+        // equal to the attachment count on render pass
+        framebufferCreateInfo.attachmentCount = 1;
+        framebufferCreateInfo.pAttachments = frameBufferAttachments;
+        framebufferCreateInfo.width = g_Width;
+        framebufferCreateInfo.height = g_Height;
+        framebufferCreateInfo.layers = 1;
+
+        g_FrameBuffers =
+            (VkFramebuffer*) malloc(g_SwapChainImageCount * sizeof(VkFramebuffer));
+
+        if (g_FrameBuffers==NULL)
+        {
+            printErrorMsg("unable to allocate memory (16)\n");
+            return false;
+        }
+
+        for (uint32_t i = 0; i < g_SwapChainImageCount; ++i)
+        {
+            g_FrameBuffers[i] = NULL;
+        }
+
+        for (uint32_t i = 0; i < g_SwapChainImageCount; ++i)
+        {
+            frameBufferAttachments[0] = g_SwapChainImageViews[i];
+
+            result = pfn_vkCreateFramebuffer(g_LogicalDevice,
+                &framebufferCreateInfo, NULL, &g_FrameBuffers[i]);
+
+            if (result != VK_SUCCESS)
+            {
+                printErrorMsg("failed to create framebuffer (%d).\n", i);
+                return false;
+            }
+        }
+
+    }
+
+    printInfoMsg("create framebuffer OK.\n");
 
     return true;
 }
