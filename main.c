@@ -1162,9 +1162,9 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
         applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
         applicationInfo.pNext = NULL;
-        applicationInfo.pApplicationName = "Linux Vulkan XCB C Sandbox";
+        applicationInfo.pApplicationName = "Triangle";
         applicationInfo.applicationVersion = VK_MAKE_VERSION(1,0,0);
-        applicationInfo.pEngineName = "Linux Vulkan XCB C Sandbox";
+        applicationInfo.pEngineName = "Triangle";
         applicationInfo.engineVersion = VK_MAKE_VERSION(1,0,0);
         applicationInfo.apiVersion = VK_API_VERSION_1_0;
 
@@ -3145,7 +3145,7 @@ int main(int argc, char **argv)
     xcb_void_cookie_t cookieWindow;
     xcb_void_cookie_t cookieMap;
     xcb_intern_atom_reply_t *atomReply = NULL;
-    char *title = "Linux Vulkan XCB C Sandbox";
+    char *title = "Triangle";
     xcb_generic_event_t *event;
     xcb_key_press_event_t *keyPressEvent;
 
