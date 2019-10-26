@@ -80,6 +80,8 @@ PFN_vkGetPhysicalDeviceQueueFamilyProperties pfn_vkGetPhysicalDeviceQueueFamilyP
 PFN_vkGetPhysicalDeviceSurfaceSupportKHR pfn_vkGetPhysicalDeviceSurfaceSupportKHR = NULL;
 PFN_vkCreateDevice pfn_vkCreateDevice = NULL;
 PFN_vkGetDeviceProcAddr pfn_vkGetDeviceProcAddr = NULL;
+PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR pfn_vkGetPhysicalDeviceSurfaceCapabilitiesKHR = NULL;
+PFN_vkGetPhysicalDeviceSurfaceFormatsKHR pfn_vkGetPhysicalDeviceSurfaceFormatsKHR = NULL;
 
 PFN_vkDestroyDevice pfn_vkDestroyDevice = NULL;
 PFN_vkGetDeviceQueue pfn_vkGetDeviceQueue = NULL;
@@ -968,6 +970,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     GET_INSTANCE_LEVEL_FUN_ADDR(vkGetPhysicalDeviceSurfaceSupportKHR);
     GET_INSTANCE_LEVEL_FUN_ADDR(vkCreateDevice);
     GET_INSTANCE_LEVEL_FUN_ADDR(vkGetDeviceProcAddr);
+    GET_INSTANCE_LEVEL_FUN_ADDR(vkGetPhysicalDeviceSurfaceCapabilitiesKHR);
+    GET_INSTANCE_LEVEL_FUN_ADDR(vkGetPhysicalDeviceSurfaceFormatsKHR);
 
 #ifdef DEBUG
     {
@@ -1516,6 +1520,34 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     }
 
     printInfoMsg("create fences: OK.\n");
+
+    //get surface capabilities
+
+    VkSurfaceCapabilitiesKHR surfaceCapabilities = {0};
+
+    {
+        VkResult result = pfn_vkGetPhysicalDeviceSurfaceCapabilitiesKHR(g_SelectedPhysicalDevice, g_Surface, &surfaceCapabilities );
+
+        if (result != VK_SUCCESS)
+        {
+            printErrorMsg("vkGetPhysicalDeviceSurfaceCapabilitiesKHR().\n");
+            return false;
+        }
+
+        printInfoMsg("surfaceCapabilities.minImageCount %d\n",surfaceCapabilities.minImageCount);
+        printInfoMsg("surfaceCapabilities.maxImageCount %d\n",surfaceCapabilities.maxImageCount);
+        printInfoMsg("surfaceCapabilities.currentExtent.width %d\n",surfaceCapabilities.currentExtent.width);
+        printInfoMsg("surfaceCapabilities.currentExtent.height %d\n",surfaceCapabilities.currentExtent.height);
+        printInfoMsg("surfaceCapabilities.minImageExtent.width %d\n",surfaceCapabilities.minImageExtent.width);
+        printInfoMsg("surfaceCapabilities.minImageExtent.height %d\n",surfaceCapabilities.minImageExtent.height);
+        printInfoMsg("surfaceCapabilities.maxImageExtent.width %d\n",surfaceCapabilities.maxImageExtent.width);
+        printInfoMsg("surfaceCapabilities.maxImageExtent.height %d\n",surfaceCapabilities.maxImageExtent.height);
+        printInfoMsg("surfaceCapabilities.maxImageArrayLayers %d\n",surfaceCapabilities.maxImageArrayLayers);
+        printInfoMsg("surfaceCapabilities.supportedTransforms %08x\n",surfaceCapabilities.supportedTransforms);
+        printInfoMsg("surfaceCapabilities.currentTransform %08x\n",surfaceCapabilities.currentTransform);
+        printInfoMsg("surfaceCapabilities.supportedCompositeAlpha %08x\n",surfaceCapabilities.supportedCompositeAlpha);
+        printInfoMsg("surfaceCapabilities.supportedUsageFlags %08x\n",surfaceCapabilities.supportedUsageFlags);
+    }
 
     return true;
 }
