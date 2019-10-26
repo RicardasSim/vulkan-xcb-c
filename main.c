@@ -95,6 +95,8 @@ PFN_vkDestroyFence pfn_vkDestroyFence = NULL;
 PFN_vkCreateSwapchainKHR pfn_vkCreateSwapchainKHR = NULL;
 PFN_vkDestroySwapchainKHR pfn_vkDestroySwapchainKHR = NULL;
 PFN_vkGetSwapchainImagesKHR pfn_vkGetSwapchainImagesKHR = NULL;
+PFN_vkCreateImageView pfn_vkCreateImageView = NULL;
+PFN_vkDestroyImageView pfn_vkDestroyImageView = NULL;
 
 #ifdef DEBUG
 struct sUserData{
@@ -190,6 +192,8 @@ VkSwapchainKHR g_SwapChain = NULL;
 uint32_t g_SwapChainImageCount = 0;
 
 VkImage* g_SwapChainImages = NULL;
+
+VkImageView *g_SwapChainImageViews = NULL;
 
 /*
 ==============================
@@ -534,6 +538,20 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
 
 void shutdownVulkan()
 {
+
+    if (g_SwapChainImageViews && pfn_vkDestroyImageView)
+    {
+        for ( uint32_t i = 0; i < g_SwapChainImageCount; ++i )
+        {
+            pfn_vkDestroyImageView(g_LogicalDevice, g_SwapChainImageViews[i], NULL);
+            printInfoMsg("vkDestroyImageView() (%d)\n",i);
+        }
+
+        free(g_SwapChainImageViews);
+		printInfoMsg("free SwapChain Image Views.\n");
+
+    }
+
     if (g_SwapChainImages)
     {
         free(g_SwapChainImages);
@@ -1493,6 +1511,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     GET_DEVICE_LEVEL_FUN_ADDR(vkCreateSwapchainKHR);
     GET_DEVICE_LEVEL_FUN_ADDR(vkDestroySwapchainKHR);
     GET_DEVICE_LEVEL_FUN_ADDR(vkGetSwapchainImagesKHR);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkCreateImageView);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkDestroyImageView);
 
     //get device queues
     pfn_vkGetDeviceQueue(g_LogicalDevice, g_GraphicsQueueFamilyIndex, 0, &g_GraphicsQueue);
@@ -1810,7 +1830,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
             }
 
             // link the images to the swapchain
-            result = pfn_vkGetSwapchainImagesKHR(g_LogicalDevice, g_SwapChain, &g_SwapChainImageCount, g_SwapChainImages);
+            result = pfn_vkGetSwapchainImagesKHR(g_LogicalDevice,
+                g_SwapChain, &g_SwapChainImageCount, g_SwapChainImages);
 
             if (result != VK_SUCCESS)
             {
@@ -1823,10 +1844,61 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
             printErrorMsg("SwapChain image count less than 1.\n");
             return false;
         }
-
-        printInfoMsg("vkGetSwapchainImagesKHR() OK.\n");
     }
 
+    printInfoMsg("vkGetSwapchainImagesKHR() OK.\n");
+
+    //image views
+    {
+        g_SwapChainImageViews = (VkImageView*) malloc(g_SwapChainImageCount * sizeof(VkImageView));
+
+        if (g_SwapChainImageViews==NULL)
+        {
+            printErrorMsg("unable to allocate memory (15)\n");
+            return false;
+        }
+
+        for (uint32_t i = 0; i < g_SwapChainImageCount; ++i)
+        {
+
+            VkImageViewCreateInfo imageViewCreateInfo = {0};
+
+            imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            imageViewCreateInfo.format = VK_FORMAT_B8G8R8A8_UNORM;
+            imageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_R;
+            imageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_G;
+            imageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_B;
+            imageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_A;
+            imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+            imageViewCreateInfo.subresourceRange.levelCount = 1;
+            imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+            imageViewCreateInfo.subresourceRange.layerCount = 1;
+            imageViewCreateInfo.image = g_SwapChainImages[i];
+
+            VkResult result = pfn_vkCreateImageView(g_LogicalDevice,
+                &imageViewCreateInfo, NULL, &g_SwapChainImageViews[i]);
+
+            if (result != VK_SUCCESS)
+            {
+                if (i>0)
+                {
+                    for (uint32_t j = 0; j < i; ++j)
+                    {
+                        pfn_vkDestroyImageView(g_LogicalDevice,
+                            g_SwapChainImageViews[j], NULL);
+                    }
+                }
+
+                free(g_SwapChainImageViews);
+                printErrorMsg("cannot create Image View (%d).\n",i);
+                return false;
+            }
+        }
+    }
+
+     printInfoMsg("create image view OK.\n");
 
     return true;
 }
