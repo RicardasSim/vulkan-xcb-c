@@ -92,6 +92,8 @@ PFN_vkCreateFence pfn_vkCreateFence = NULL;
 PFN_vkResetFences pfn_vkResetFences = NULL;
 PFN_vkWaitForFences pfn_vkWaitForFences = NULL;
 PFN_vkDestroyFence pfn_vkDestroyFence = NULL;
+PFN_vkCreateSwapchainKHR pfn_vkCreateSwapchainKHR = NULL;
+PFN_vkDestroySwapchainKHR pfn_vkDestroySwapchainKHR = NULL;
 
 #ifdef DEBUG
 struct sUserData{
@@ -182,6 +184,7 @@ VkExtent2D g_SwapChainExtent;
 
 uint32_t g_ImageCount = 0;
 
+VkSwapchainKHR g_SwapChain = NULL;
 
 /*
 ==============================
@@ -526,6 +529,13 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
 
 void shutdownVulkan()
 {
+
+    if (g_SwapChain && pfn_vkDestroySwapchainKHR)
+    {
+        pfn_vkDestroySwapchainKHR(g_LogicalDevice, g_SwapChain, NULL);
+        printInfoMsg("vkDestroySwapchainKHR().\n");
+    }
+
     if(pfn_vkDestroyFence)
     {
         for ( int32_t i = 0; i < SWAP_CHAIN_IMAGE_COUNT; ++i )
@@ -1470,6 +1480,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     GET_DEVICE_LEVEL_FUN_ADDR(vkResetFences);
     GET_DEVICE_LEVEL_FUN_ADDR(vkWaitForFences);
     GET_DEVICE_LEVEL_FUN_ADDR(vkDestroyFence);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkCreateSwapchainKHR);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkDestroySwapchainKHR);
 
     //get device queues
     pfn_vkGetDeviceQueue(g_LogicalDevice, g_GraphicsQueueFamilyIndex, 0, &g_GraphicsQueue);
@@ -1698,8 +1710,10 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         }
         else
         {
-            g_SwapChainExtent.width = maxValU(surfaceCapabilities.minImageExtent.width,surfaceCapabilities.maxImageExtent.width);
-            g_SwapChainExtent.height = maxValU(surfaceCapabilities.minImageExtent.height,surfaceCapabilities.maxImageExtent.height);
+            g_SwapChainExtent.width = maxValU(surfaceCapabilities.minImageExtent.width,
+                surfaceCapabilities.maxImageExtent.width);
+            g_SwapChainExtent.height = maxValU(surfaceCapabilities.minImageExtent.height,
+                surfaceCapabilities.maxImageExtent.height);
         }
 
         printInfoMsg("SwapChain Extent width: %d\n", g_SwapChainExtent.width);
@@ -1709,11 +1723,59 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     //image count
     {
         g_ImageCount = 2;
-        if (g_ImageCount<surfaceCapabilities.minImageCount) g_ImageCount = surfaceCapabilities.minImageCount;
-        if (g_ImageCount>surfaceCapabilities.maxImageCount) g_ImageCount = surfaceCapabilities.maxImageCount;
+        if (g_ImageCount<surfaceCapabilities.minImageCount)
+            g_ImageCount = surfaceCapabilities.minImageCount;
+        if (g_ImageCount>surfaceCapabilities.maxImageCount)
+            g_ImageCount = surfaceCapabilities.maxImageCount;
 
         printInfoMsg("image count: %d\n", g_ImageCount);
     }
+
+    //swapchain
+    {
+        VkSwapchainCreateInfoKHR swapchainCreateInfo = {0};
+
+        uint32_t queueFamilyIndices[] = {g_GraphicsQueueFamilyIndex, g_PresentQueueFamilyIndex};
+
+        swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+        swapchainCreateInfo.minImageCount = g_ImageCount;
+        swapchainCreateInfo.surface = g_Surface;
+        swapchainCreateInfo.imageFormat = g_SurfaceFormat.format;
+        swapchainCreateInfo.imageColorSpace = g_SurfaceFormat.colorSpace;
+        swapchainCreateInfo.imageExtent = g_SwapChainExtent;
+        swapchainCreateInfo.imageArrayLayers = 1;
+        swapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+        if (g_GraphicsQueueFamilyIndex != g_PresentQueueFamilyIndex)
+        {
+            swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+            swapchainCreateInfo.queueFamilyIndexCount = 2;
+            swapchainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
+        }
+        else
+        {
+            swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        }
+
+        swapchainCreateInfo.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+        swapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+        swapchainCreateInfo.presentMode = g_PresentMode;
+        swapchainCreateInfo.clipped = true;
+        swapchainCreateInfo.oldSwapchain = NULL;
+
+        VkResult result = pfn_vkCreateSwapchainKHR( g_LogicalDevice,
+            &swapchainCreateInfo, NULL,	&g_SwapChain );
+
+        if (result != VK_SUCCESS)
+        {
+            printErrorMsg("faied to create SwapChain.\n");
+            return false;
+        }
+    }
+
+    printInfoMsg("create SwapChain OK.\n");
+
+
 
     return true;
 }
