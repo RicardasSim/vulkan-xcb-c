@@ -82,6 +82,7 @@ PFN_vkCreateDevice pfn_vkCreateDevice = NULL;
 PFN_vkGetDeviceProcAddr pfn_vkGetDeviceProcAddr = NULL;
 PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR pfn_vkGetPhysicalDeviceSurfaceCapabilitiesKHR = NULL;
 PFN_vkGetPhysicalDeviceSurfaceFormatsKHR pfn_vkGetPhysicalDeviceSurfaceFormatsKHR = NULL;
+PFN_vkGetPhysicalDeviceSurfacePresentModesKHR pfn_vkGetPhysicalDeviceSurfacePresentModesKHR = NULL;
 
 PFN_vkDestroyDevice pfn_vkDestroyDevice = NULL;
 PFN_vkGetDeviceQueue pfn_vkGetDeviceQueue = NULL;
@@ -175,6 +176,7 @@ VkSemaphore g_semaphoreRenderFinishedArr[SWAP_CHAIN_IMAGE_COUNT] = {NULL};
 VkFence fenceArr[SWAP_CHAIN_IMAGE_COUNT] = {NULL};
 
 VkSurfaceFormatKHR g_SurfaceFormat = {VK_FORMAT_B8G8R8A8_UNORM,VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
+VkPresentModeKHR g_PresentMode = VK_PRESENT_MODE_FIFO_KHR;
 
 /*
 ==============================
@@ -974,6 +976,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     GET_INSTANCE_LEVEL_FUN_ADDR(vkGetDeviceProcAddr);
     GET_INSTANCE_LEVEL_FUN_ADDR(vkGetPhysicalDeviceSurfaceCapabilitiesKHR);
     GET_INSTANCE_LEVEL_FUN_ADDR(vkGetPhysicalDeviceSurfaceFormatsKHR);
+    GET_INSTANCE_LEVEL_FUN_ADDR(vkGetPhysicalDeviceSurfacePresentModesKHR);
 
 #ifdef DEBUG
     {
@@ -1618,8 +1621,69 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
             printInfoMsg("g_SurfaceFormat.colorSpace: %s\n",str_VkColorSpaceKHR(g_SurfaceFormat.colorSpace));
 
             free(surfaceFormats);
-
         }
+    }
+
+    //present modes
+    {
+        uint32_t presentModeCount = 0;
+
+        VkResult result = pfn_vkGetPhysicalDeviceSurfacePresentModesKHR(g_SelectedPhysicalDevice, g_Surface, &presentModeCount, NULL);
+
+        if (result != VK_SUCCESS)
+        {
+            printErrorMsg("vkGetPhysicalDeviceSurfacePresentModesKHR (1).\n");
+            return false;
+        }
+
+        printInfoMsg("present mode count %d\n",presentModeCount);
+
+        if (presentModeCount>0)
+        {
+
+            VkPresentModeKHR* presentModes = (VkPresentModeKHR*) malloc(presentModeCount * sizeof(VkPresentModeKHR));
+
+            if (presentModes==NULL)
+            {
+                printErrorMsg("unable to allocate memory (13)\n");
+                return false;
+            }
+
+            result = pfn_vkGetPhysicalDeviceSurfacePresentModesKHR(g_SelectedPhysicalDevice, g_Surface, &presentModeCount, presentModes);
+
+            if (result != VK_SUCCESS)
+            {
+                free(presentModes);
+                printErrorMsg("vkGetPhysicalDeviceSurfacePresentModesKHR (2).\n");
+                return false;
+            }
+
+            printInfoMsg("Present modes:\n");
+
+            for (uint32_t i = 0; i < presentModeCount; ++i)
+            {
+                printf("\t%s\n",str_VkPresentModeKHR(presentModes[i]));
+            }
+
+            //choose SwapChain Present Mode
+
+            for (uint32_t i = 0; i < presentModeCount; ++i)
+            {
+                if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR)
+                {
+                    g_PresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+                }
+                else if (presentModes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR)
+                {
+                    g_PresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+                }
+            }
+
+            printInfoMsg("g_PresentMode: %s\n",str_VkPresentModeKHR(g_PresentMode));
+
+            free(presentModes);
+        }
+
     }
 
     return true;
