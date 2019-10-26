@@ -11,3 +11,12 @@ Learning Vulkan API
  linmath.h https://github.com/datenwolf/linmath.h WTFPL  
 
  Big thanks to ##C IRC channel on Freenode !!!
+
+![alt text](https://github.com/RicardasSim/vulkan-xcb-c/blob/master/screenshot-1.jpg)
+
+TODO:
+camera move  
+triangle rotation  
+support resize  
+move some functions from renderVulkan();
+
