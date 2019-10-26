@@ -236,6 +236,28 @@ char fragmentShaderFileName[] = {"simple.frag.spv"};
 VkShaderModule g_vertShaderModule = 0;
 VkShaderModule g_fragShaderModule = 0;
 
+//modelMatrix Model to World
+//viewMatrix World to View
+//projectionMatrix View to Projection
+
+mat4x4 modelMatrix = {{1.0f, 0.0f, 0.0f, 0.0f},
+                      {0.0f, 1.0f, 0.0f, 0.0f},
+                      {0.0f, 0.0f, 1.0f, 0.0f},
+                      {0.0f, 0.0f, 0.0f, 1.0f}};
+
+mat4x4 viewMatrix = {{1.0f, 0.0f, 0.0f, 0.0f},
+                     {0.0f, 1.0f, 0.0f, 0.0f},
+                     {0.0f, 0.0f, 1.0f, 0.0f},
+                     {0.0f, 0.0f, 0.0f, 1.0f}};
+
+mat4x4 projectionMatrix = {{1.0f, 0.0f, 0.0f, 0.0f},
+                           {0.0f, 1.0f, 0.0f, 0.0f},
+                           {0.0f, 0.0f, 1.0f, 0.0f},
+                           {0.0f, 0.0f, 0.0f, 1.0f}};
+
+VkBuffer g_DescrBuffer = NULL;
+VkDeviceMemory g_DescriptorBufferDeviceMemory = VK_NULL_HANDLE;
+
 /*
 ==============================
  printInfoMsg();
@@ -579,6 +601,18 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
 
 void shutdownVulkan()
 {
+    if (g_DescriptorBufferDeviceMemory && pfn_vkFreeMemory)
+    {
+        pfn_vkFreeMemory(g_LogicalDevice, g_DescriptorBufferDeviceMemory, NULL);
+        printInfoMsg("vkFreeMemory(), device descriptor buffer\n");
+    }
+
+    if (g_DescrBuffer && pfn_vkDestroyBuffer)
+    {
+        pfn_vkDestroyBuffer(g_LogicalDevice,g_DescrBuffer,NULL);
+        printInfoMsg("vkDestroyBuffer(), descriptor buffer\n");
+    }
+
     if (g_fragShaderModule && pfn_vkDestroyShaderModule)
     {
         pfn_vkDestroyShaderModule(g_LogicalDevice, g_fragShaderModule, NULL);
@@ -2432,6 +2466,116 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     }
 
     printInfoMsg("load fragment buffer OK.\n");
+
+    //descriptor buffer
+    {
+        VkBufferCreateInfo descriptorBufferCreateInfo = {0};
+
+        descriptorBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        descriptorBufferCreateInfo.size =
+            sizeof modelMatrix + sizeof viewMatrix + sizeof projectionMatrix;
+        descriptorBufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        descriptorBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        VkResult result = pfn_vkCreateBuffer(g_LogicalDevice,
+            &descriptorBufferCreateInfo,NULL,&g_DescrBuffer);
+
+        if (result != VK_SUCCESS)
+        {
+            printErrorMsg("failed to create descriptor buffer.\n");
+            return false;
+        }
+
+        printInfoMsg("descriptor buffer OK.\n");
+
+        VkMemoryRequirements descriptorBufferMemoryRequirements = {0};
+
+        pfn_vkGetBufferMemoryRequirements(g_LogicalDevice,
+            g_DescrBuffer, &descriptorBufferMemoryRequirements);
+
+        printInfoMsg("Descriptor Memory Requirements size: %zu\n",
+            descriptorBufferMemoryRequirements.size );
+        printInfoMsg("Descriptor Memory Requirements alignment: %zu\n",
+            descriptorBufferMemoryRequirements.alignment );
+
+        VkMemoryAllocateInfo memoryAllocateInfo = {0};
+
+        memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        memoryAllocateInfo.pNext = NULL;
+        memoryAllocateInfo.allocationSize = descriptorBufferMemoryRequirements.size;
+        memoryAllocateInfo.memoryTypeIndex = 0;
+
+        VkPhysicalDeviceMemoryProperties memoryProperties;
+
+        pfn_vkGetPhysicalDeviceMemoryProperties(g_SelectedPhysicalDevice, &memoryProperties);
+
+        bool flag = false;
+
+        for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; ++i)
+        {
+            VkMemoryType memoryType = memoryProperties.memoryTypes[i];
+            if (
+                (descriptorBufferMemoryRequirements.memoryTypeBits & (1 << i)) &&
+                (memoryType.propertyFlags & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                    | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT ))
+            )
+            {
+                memoryAllocateInfo.memoryTypeIndex = i;
+                flag = true;
+            }
+        }
+
+        if (!flag)
+        {
+            printErrorMsg("descriptor buffer, failed to find suitable memory type!\n");
+		    return false;
+        }
+
+        result = pfn_vkAllocateMemory(g_LogicalDevice,
+            &memoryAllocateInfo, NULL, &g_DescriptorBufferDeviceMemory);
+
+        if (result != VK_SUCCESS)
+        {
+            printErrorMsg("descriptor buffer vkAllocateMemory.\n");
+            return false;
+        }
+
+        printInfoMsg("descriptor buffer vkAllocateMemory OK.\n");
+
+        result = pfn_vkBindBufferMemory(g_LogicalDevice,
+            g_DescrBuffer, g_DescriptorBufferDeviceMemory, 0);
+
+	    if (result != VK_SUCCESS)
+        {
+            printErrorMsg("descriptor buffer vkBindBufferMemory.\n");
+            return false;
+        }
+
+        printInfoMsg("descriptor buffer vkBindBufferMemory OK.\n");
+
+        void* data;
+
+        result = pfn_vkMapMemory(g_LogicalDevice,
+            g_DescriptorBufferDeviceMemory, 0, VK_WHOLE_SIZE, 0, &data);
+
+        if (result != VK_SUCCESS)
+        {
+            printErrorMsg("descriptor buffer vkMapMemory.\n");
+            return false;
+        }
+
+        printInfoMsg("descriptor buffer vkMapMemory OK.\n");
+
+        char *pMem = data;
+
+        memcpy(pMem, modelMatrix, sizeof modelMatrix);
+        memcpy(pMem + sizeof modelMatrix, viewMatrix, sizeof viewMatrix);
+        memcpy(pMem + sizeof modelMatrix + sizeof viewMatrix, projectionMatrix, sizeof projectionMatrix);
+
+        pfn_vkUnmapMemory(g_LogicalDevice, g_DescriptorBufferDeviceMemory);
+    }
+
+
 
     return true;
 }
