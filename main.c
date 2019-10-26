@@ -250,7 +250,7 @@ VkBuffer g_VertexBuffer = NULL;
 VkDeviceMemory g_VertexBufferDeviceMemory = VK_NULL_HANDLE;
 
 VkCommandPool g_CommandPool = 0;
-VkCommandBuffer g_CommandBuffers[1] = {NULL};
+VkCommandBuffer *g_CommandBuffers = NULL;
 
 char vertexShaderFileName[] = {"simple.vert.spv"};
 char fragmentShaderFileName[] = {"simple.frag.spv"};
@@ -688,11 +688,18 @@ void shutdownVulkan()
         printInfoMsg("vkDestroyShaderModule(), vertex shader buffer\n");
     }
 
-    //at the moment only one
-    if (g_CommandBuffers[0]!=NULL && pfn_vkFreeCommandBuffers)
+    if(g_CommandBuffers)
     {
-        pfn_vkFreeCommandBuffers(g_LogicalDevice, g_CommandPool, 1, &g_CommandBuffers[0]);
-        printInfoMsg("free CommandBuffers()\n");
+        for ( uint32_t i = 0; i < g_SwapChainImageCount; ++i)
+        {
+            if (g_CommandBuffers[i]!=NULL && pfn_vkFreeCommandBuffers)
+            {
+                pfn_vkFreeCommandBuffers(g_LogicalDevice, g_CommandPool, 1, &g_CommandBuffers[i]);
+                printInfoMsg("free CommandBuffers [%d]\n", i);
+            }
+        }
+
+        free(g_CommandBuffers);
     }
 
     if (g_CommandPool && pfn_vkDestroyCommandPool)
@@ -2367,6 +2374,18 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
     printInfoMsg("create CommandPool OK.\n");
 
+    //command buffers
+    {
+        g_CommandBuffers = malloc(g_SwapChainImageCount * sizeof(VkCommandBuffer));
+
+        if(!g_CommandBuffers)
+        {
+            printErrorMsg("unable to allocate memory (22).\n");
+			return false;
+        }
+
+    }
+
     //allocate command buffers
     {
         VkCommandBufferAllocateInfo commandBufferAllocateInfo = {0};
@@ -2374,7 +2393,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         commandBufferAllocateInfo.commandPool = g_CommandPool;
         commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        commandBufferAllocateInfo.commandBufferCount = 1;
+        commandBufferAllocateInfo.commandBufferCount = g_SwapChainImageCount;
 
         VkResult result = pfn_vkAllocateCommandBuffers(g_LogicalDevice, &commandBufferAllocateInfo, g_CommandBuffers);
 
