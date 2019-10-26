@@ -110,6 +110,10 @@ PFN_vkGetBufferMemoryRequirements pfn_vkGetBufferMemoryRequirements = NULL;
 PFN_vkBindBufferMemory pfn_vkBindBufferMemory = NULL;
 PFN_vkMapMemory pfn_vkMapMemory = NULL;
 PFN_vkUnmapMemory pfn_vkUnmapMemory = NULL;
+PFN_vkCreateCommandPool pfn_vkCreateCommandPool = NULL;
+PFN_vkDestroyCommandPool pfn_vkDestroyCommandPool = NULL;
+PFN_vkAllocateCommandBuffers pfn_vkAllocateCommandBuffers = NULL;
+PFN_vkFreeCommandBuffers pfn_vkFreeCommandBuffers = NULL;
 
 #ifdef DEBUG
 struct sUserData{
@@ -220,6 +224,9 @@ typedef struct{
 
 VkBuffer g_VertexBuffer = NULL;
 VkDeviceMemory g_VertexBufferDeviceMemory = VK_NULL_HANDLE;
+
+VkCommandPool g_CommandPool = 0;
+VkCommandBuffer g_CommandBuffers[1] = {NULL};
 
 /*
 ==============================
@@ -564,6 +571,18 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
 
 void shutdownVulkan()
 {
+    //at the moment only one
+    if (g_CommandBuffers[0]!=NULL && pfn_vkFreeCommandBuffers)
+    {
+        pfn_vkFreeCommandBuffers(g_LogicalDevice, g_CommandPool, 1, &g_CommandBuffers[0]);
+        printInfoMsg("free CommandBuffers()\n");
+    }
+
+    if (g_CommandPool && pfn_vkDestroyCommandPool)
+    {
+        pfn_vkDestroyCommandPool( g_LogicalDevice, g_CommandPool, NULL );
+        printInfoMsg("destroy CommandPool()\n");
+    }
 
     if (g_VertexBufferDeviceMemory && pfn_vkFreeMemory)
     {
@@ -1456,7 +1475,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         {
             VkBool32 presentationSupported;
 
-            VkResult result = pfn_vkGetPhysicalDeviceSurfaceSupportKHR( g_SelectedPhysicalDevice, i, g_Surface, &presentationSupported);
+            VkResult result = pfn_vkGetPhysicalDeviceSurfaceSupportKHR( g_SelectedPhysicalDevice,
+                i, g_Surface, &presentationSupported);
 
             if (result != VK_SUCCESS)
             {
@@ -1587,6 +1607,10 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     GET_DEVICE_LEVEL_FUN_ADDR(vkBindBufferMemory);
     GET_DEVICE_LEVEL_FUN_ADDR(vkMapMemory);
     GET_DEVICE_LEVEL_FUN_ADDR(vkUnmapMemory);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkCreateCommandPool);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkDestroyCommandPool);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkAllocateCommandBuffers);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkFreeCommandBuffers);
 
     //get device queues
     pfn_vkGetDeviceQueue(g_LogicalDevice, g_GraphicsQueueFamilyIndex, 0, &g_GraphicsQueue);
@@ -2181,6 +2205,26 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         pfn_vkUnmapMemory(g_LogicalDevice, g_VertexBufferDeviceMemory);
 
     }
+
+    //command pool
+    {
+        VkCommandPoolCreateInfo commandPoolCreateInfo = {0};
+
+        commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        commandPoolCreateInfo.queueFamilyIndex = g_GraphicsQueueFamilyIndex;
+
+        VkResult result  = pfn_vkCreateCommandPool(g_LogicalDevice, &commandPoolCreateInfo, NULL, &g_CommandPool);
+
+        if (result != VK_SUCCESS)
+        {
+            printErrorMsg("cannot create CommandPool.\n");
+            return false;
+        }
+
+    }
+
+    printInfoMsg("create CommandPool OK.\n");
 
     return true;
 }
