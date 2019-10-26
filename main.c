@@ -85,6 +85,10 @@ PFN_vkDestroyDevice pfn_vkDestroyDevice = NULL;
 PFN_vkGetDeviceQueue pfn_vkGetDeviceQueue = NULL;
 PFN_vkCreateSemaphore pfn_vkCreateSemaphore = NULL;
 PFN_vkDestroySemaphore pfn_vkDestroySemaphore = NULL;
+PFN_vkCreateFence pfn_vkCreateFence = NULL;
+PFN_vkResetFences pfn_vkResetFences = NULL;
+PFN_vkWaitForFences pfn_vkWaitForFences = NULL;
+PFN_vkDestroyFence pfn_vkDestroyFence = NULL;
 
 #ifdef DEBUG
 struct sUserData{
@@ -165,6 +169,8 @@ VkQueue g_PresentQueue = VK_NULL_HANDLE;
 
 VkSemaphore g_semaphoreImageAvailableArr[SWAP_CHAIN_IMAGE_COUNT] = {NULL};
 VkSemaphore g_semaphoreRenderFinishedArr[SWAP_CHAIN_IMAGE_COUNT] = {NULL};
+
+VkFence fenceArr[SWAP_CHAIN_IMAGE_COUNT] = {NULL};
 
 /*
 ==============================
@@ -509,6 +515,17 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
 
 void shutdownVulkan()
 {
+    if(pfn_vkDestroyFence)
+    {
+        for ( int32_t i = 0; i < SWAP_CHAIN_IMAGE_COUNT; ++i )
+        {
+            if(fenceArr[i])
+            {
+                pfn_vkDestroyFence( g_LogicalDevice, fenceArr[i], NULL );
+                printInfoMsg("vkDestroyFence() [%d]\n", i);
+            }
+        }
+    }
 
     if(pfn_vkDestroySemaphore)
     {
@@ -1435,6 +1452,10 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     GET_DEVICE_LEVEL_FUN_ADDR(vkGetDeviceQueue);
     GET_DEVICE_LEVEL_FUN_ADDR(vkCreateSemaphore);
     GET_DEVICE_LEVEL_FUN_ADDR(vkDestroySemaphore);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkCreateFence);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkResetFences);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkWaitForFences);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkDestroyFence);
 
     //get device queues
     pfn_vkGetDeviceQueue(g_LogicalDevice, g_GraphicsQueueFamilyIndex, 0, &g_GraphicsQueue);
@@ -1474,7 +1495,27 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         }
     }
 
-    printInfoMsg("create semaphores: OK.");
+    printInfoMsg("create semaphores: OK.\n");
+
+    //create fences
+    {
+        for ( int32_t i = 0; i < SWAP_CHAIN_IMAGE_COUNT; ++i )
+        {
+            VkFenceCreateInfo fenceCreateInfo = {0};
+            fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+            fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+            VkResult result = pfn_vkCreateFence( g_LogicalDevice, &fenceCreateInfo, NULL, &fenceArr[i]);
+
+            if (result != VK_SUCCESS)
+            {
+                printErrorMsg("cannot create fence. [%d].\n", i);
+                return false;
+            }
+    }
+    }
+
+    printInfoMsg("create fences: OK.\n");
 
     return true;
 }
