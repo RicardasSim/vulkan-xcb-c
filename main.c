@@ -138,6 +138,7 @@ PFN_vkEndCommandBuffer pfn_vkEndCommandBuffer = NULL;
 PFN_vkQueueSubmit pfn_vkQueueSubmit = NULL;
 PFN_vkQueuePresentKHR pfn_vkQueuePresentKHR = NULL;
 PFN_vkCmdDraw pfn_vkCmdDraw = NULL;
+PFN_vkDeviceWaitIdle pfn_vkDeviceWaitIdle = NULL;
 
 #ifdef DEBUG
 struct sUserData{
@@ -1759,6 +1760,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     GET_DEVICE_LEVEL_FUN_ADDR(vkQueueSubmit);
     GET_DEVICE_LEVEL_FUN_ADDR(vkQueuePresentKHR);
     GET_DEVICE_LEVEL_FUN_ADDR(vkCmdDraw);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkDeviceWaitIdle);
 
     //get device queues
     pfn_vkGetDeviceQueue(g_LogicalDevice, g_GraphicsQueueFamilyIndex, 0, &g_GraphicsQueue);
@@ -3384,6 +3386,9 @@ int main(int argc, char **argv)
         }
 
     }
+
+    //TODO
+    if (g_LogicalDevice && pfn_vkDeviceWaitIdle) pfn_vkDeviceWaitIdle(g_LogicalDevice);
 
     shutdownVulkan();
 
