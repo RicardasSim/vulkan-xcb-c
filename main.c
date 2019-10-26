@@ -116,6 +116,13 @@ PFN_vkAllocateCommandBuffers pfn_vkAllocateCommandBuffers = NULL;
 PFN_vkFreeCommandBuffers pfn_vkFreeCommandBuffers = NULL;
 PFN_vkCreateShaderModule pfn_vkCreateShaderModule = NULL;
 PFN_vkDestroyShaderModule pfn_vkDestroyShaderModule = NULL;
+PFN_vkCreateDescriptorSetLayout pfn_vkCreateDescriptorSetLayout = NULL;
+PFN_vkDestroyDescriptorSetLayout pfn_vkDestroyDescriptorSetLayout = NULL;
+PFN_vkCreateDescriptorPool pfn_vkCreateDescriptorPool = NULL;
+PFN_vkDestroyDescriptorPool pfn_vkDestroyDescriptorPool = NULL;
+PFN_vkAllocateDescriptorSets pfn_vkAllocateDescriptorSets = NULL;
+PFN_vkUpdateDescriptorSets pfn_vkUpdateDescriptorSets = NULL;
+PFN_vkFreeDescriptorSets pfn_vkFreeDescriptorSets = NULL;
 
 #ifdef DEBUG
 struct sUserData{
@@ -257,6 +264,11 @@ mat4x4 projectionMatrix = {{1.0f, 0.0f, 0.0f, 0.0f},
 
 VkBuffer g_DescrBuffer = NULL;
 VkDeviceMemory g_DescriptorBufferDeviceMemory = VK_NULL_HANDLE;
+
+VkDescriptorSetLayout g_DescriptorSetLayout = NULL;
+VkDescriptorSet* g_DescriptorSets = NULL;
+VkDescriptorPool g_DescriptorPool = NULL;
+uint32_t descriptorSetsCount = 0;
 
 /*
 ==============================
@@ -601,6 +613,25 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugMessengerCallback(VkDebugUtilsMessage
 
 void shutdownVulkan()
 {
+    if (g_DescriptorSets && pfn_vkFreeDescriptorSets)
+    {
+        pfn_vkFreeDescriptorSets(g_LogicalDevice,g_DescriptorPool,descriptorSetsCount,g_DescriptorSets);
+        free(g_DescriptorSets);
+        printInfoMsg("free descriptor sets\n");
+    }
+
+    if (g_DescriptorPool && pfn_vkDestroyDescriptorPool)
+    {
+        pfn_vkDestroyDescriptorPool(g_LogicalDevice,g_DescriptorPool,NULL);
+        printInfoMsg("vkDestroyDescriptorPool()\n");
+    }
+
+    if (g_DescriptorSetLayout && pfn_vkDestroyDescriptorSetLayout)
+    {
+        pfn_vkDestroyDescriptorSetLayout(g_LogicalDevice,g_DescriptorSetLayout,NULL);
+        printInfoMsg("vkDestroyDescriptorSetLayout()\n");
+    }
+
     if (g_DescriptorBufferDeviceMemory && pfn_vkFreeMemory)
     {
         pfn_vkFreeMemory(g_LogicalDevice, g_DescriptorBufferDeviceMemory, NULL);
@@ -1667,6 +1698,13 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     GET_DEVICE_LEVEL_FUN_ADDR(vkFreeCommandBuffers);
     GET_DEVICE_LEVEL_FUN_ADDR(vkCreateShaderModule);
     GET_DEVICE_LEVEL_FUN_ADDR(vkDestroyShaderModule);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkCreateDescriptorSetLayout);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkDestroyDescriptorSetLayout);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkCreateDescriptorPool);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkDestroyDescriptorPool);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkAllocateDescriptorSets);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkUpdateDescriptorSets);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkFreeDescriptorSets);
 
     //get device queues
     pfn_vkGetDeviceQueue(g_LogicalDevice, g_GraphicsQueueFamilyIndex, 0, &g_GraphicsQueue);
@@ -2313,7 +2351,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
         if(!fullPath)
         {
-            printErrorMsg("unable to allocate memory (20)");
+            printErrorMsg("unable to allocate memory (19)");
             return false;
         }
 
@@ -2536,7 +2574,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
         if (result != VK_SUCCESS)
         {
-            printErrorMsg("descriptor buffer vkAllocateMemory.\n");
+            printErrorMsg("unable to allocate device memory (2).\n");
             return false;
         }
 
@@ -2575,7 +2613,106 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         pfn_vkUnmapMemory(g_LogicalDevice, g_DescriptorBufferDeviceMemory);
     }
 
+    //descriptors
+    {
+        VkDescriptorSetLayoutBinding descriptorSetLayoutBinding[1];
 
+        descriptorSetLayoutBinding[0].binding = 0;
+        descriptorSetLayoutBinding[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorSetLayoutBinding[0].descriptorCount = 1;
+        descriptorSetLayoutBinding[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        descriptorSetLayoutBinding[0].pImmutableSamplers = NULL;
+
+        VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {0};
+
+        descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        descriptorSetLayoutCreateInfo.bindingCount = 1;
+        descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBinding;
+
+        VkResult result = pfn_vkCreateDescriptorSetLayout(g_LogicalDevice,
+            &descriptorSetLayoutCreateInfo,NULL,&g_DescriptorSetLayout);
+
+        if (result != VK_SUCCESS)
+        {
+            printErrorMsg("vkCreateDescriptorSetLayout().\n");
+            return false;
+		}
+
+        printInfoMsg("create DescriptorSetLayout OK.\n");
+
+        VkDescriptorPoolSize descriptorPoolSize[1];
+
+	    descriptorPoolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	    descriptorPoolSize[0].descriptorCount = 1;
+
+	    VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {0};
+
+	    descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        descriptorPoolCreateInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+	    descriptorPoolCreateInfo.maxSets = 1;
+	    descriptorPoolCreateInfo.poolSizeCount = 1;
+	    descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSize;
+
+        result = pfn_vkCreateDescriptorPool(g_LogicalDevice,
+            &descriptorPoolCreateInfo,NULL,&g_DescriptorPool);
+
+	    if (result != VK_SUCCESS)
+        {
+		    printErrorMsg("vkCreateDescriptorPool().\n");
+		    return false;
+	    }
+
+        printInfoMsg("vkCreateDescriptorPool() OK.\n");
+
+        descriptorSetsCount = 1;
+
+        g_DescriptorSets = malloc(sizeof(VkDescriptorSet) * descriptorSetsCount);
+
+        if (!descriptorSetsCount)
+        {
+	        printErrorMsg("unable to allocate memory (21)\n");
+	        return false;
+        }
+
+        VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {0};
+
+        descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        descriptorSetAllocateInfo.pNext = NULL;
+        descriptorSetAllocateInfo.descriptorPool = g_DescriptorPool;
+        descriptorSetAllocateInfo.descriptorSetCount = descriptorSetsCount;
+        descriptorSetAllocateInfo.pSetLayouts = &g_DescriptorSetLayout;
+
+	    result = pfn_vkAllocateDescriptorSets(g_LogicalDevice,&descriptorSetAllocateInfo,g_DescriptorSets);
+
+	    if (result != VK_SUCCESS)
+        {
+	        printErrorMsg("vkAllocateDescriptorSets().\n");
+		    return false;
+        }
+
+        printInfoMsg("vkAllocateDescriptorSets() OK.\n");
+
+	    VkDescriptorBufferInfo descriptorBufferInfo = {0};
+
+	    descriptorBufferInfo.buffer = g_DescrBuffer;
+	    descriptorBufferInfo.offset = 0;
+	    descriptorBufferInfo.range = VK_WHOLE_SIZE;
+
+	    VkWriteDescriptorSet writeDescriptorSet = {0};
+
+	    writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSet.pNext = NULL;
+	    writeDescriptorSet.dstSet = g_DescriptorSets[0];
+	    writeDescriptorSet.dstBinding = 0;
+	    writeDescriptorSet.dstArrayElement = 0;
+	    writeDescriptorSet.descriptorCount = 1;
+	    writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	    writeDescriptorSet.pImageInfo = NULL;
+	    writeDescriptorSet.pBufferInfo = &descriptorBufferInfo;
+	    writeDescriptorSet.pTexelBufferView = NULL;
+
+	    pfn_vkUpdateDescriptorSets(g_LogicalDevice,1,&writeDescriptorSet,0,NULL);
+    }
 
     return true;
 }
