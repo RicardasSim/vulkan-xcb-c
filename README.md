@@ -17,5 +17,5 @@ Learning Vulkan API
 **TODO:**  
 camera move  
 triangle rotation  
-support resize  
-move some functions from renderVulkan();
+support resize
+
