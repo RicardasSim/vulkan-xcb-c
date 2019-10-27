@@ -2934,6 +2934,53 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         printInfoMsg("vkCreatePipeline() OK.\n");
     }
 
+    //recording a command buffers
+    for(uint32_t i = 0; i < g_SwapChainImageCount; ++i)
+    {
+        VkCommandBufferBeginInfo beginInfo = {0};
+
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+        pfn_vkBeginCommandBuffer(g_CommandBuffers[i], &beginInfo);
+
+        VkClearValue clearValue[] = {
+            {.color = {.float32 = {0.0f,0.5f,0.5f,1.0f}}},
+            {.depthStencil = {.depth = 1.0,.stencil = 0}}
+        };
+
+        VkRenderPassBeginInfo renderPassBeginInfo = {0};
+
+        renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassBeginInfo.renderPass = g_RenderPass;
+        renderPassBeginInfo.framebuffer = g_FrameBuffers[i];
+
+        VkOffset2D offset = { 0, 0 };
+        VkExtent2D extent= { g_Width, g_Height };
+        VkRect2D rectangle = { offset, extent };
+        renderPassBeginInfo.renderArea = rectangle;
+        renderPassBeginInfo.clearValueCount = 2;
+        renderPassBeginInfo.pClearValues = clearValue;
+
+        pfn_vkCmdBeginRenderPass(g_CommandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+        pfn_vkCmdBindPipeline(g_CommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, g_Pipeline);
+
+        pfn_vkCmdBindDescriptorSets(g_CommandBuffers[i],
+            VK_PIPELINE_BIND_POINT_GRAPHICS, g_PipelineLayout, 0, 1, g_DescriptorSets, 0, NULL);
+
+        VkBuffer vertexBuffers[] = {g_VertexBuffer};
+
+        VkDeviceSize offsets[] = {0};
+
+        pfn_vkCmdBindVertexBuffers( g_CommandBuffers[i], 0, 1, vertexBuffers, offsets );
+
+        pfn_vkCmdDraw(g_CommandBuffers[i], 3, 1, 0, 0);
+
+        pfn_vkCmdEndRenderPass(g_CommandBuffers[i]);
+
+        pfn_vkEndCommandBuffer(g_CommandBuffers[i]);
+    }
+
     return true;
 }
 
@@ -3032,7 +3079,8 @@ void renderVulkan()
         //TODO
     }
 
-    result = pfn_vkAcquireNextImageKHR( g_LogicalDevice, g_SwapChain, UINT64_MAX, g_semaphoreImageAvailableArr[currentFrame], VK_NULL_HANDLE, &imageIndex);
+    result = pfn_vkAcquireNextImageKHR( g_LogicalDevice, g_SwapChain, UINT64_MAX,
+        g_semaphoreImageAvailableArr[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
     if( result != VK_SUCCESS)
     {
@@ -3040,67 +3088,24 @@ void renderVulkan()
         //TODO
     }
 
-    VkCommandBufferBeginInfo beginInfo = {0};
+    VkPipelineStageFlags pipelineStageFlags = { VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT };
 
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    VkQueue graphicsQueue = 0;
 
-	pfn_vkBeginCommandBuffer(g_CommandBuffers[currentFrame], &beginInfo);
+    pfn_vkGetDeviceQueue(g_LogicalDevice,0,0,&graphicsQueue);
 
-	VkClearValue clearValue[] = {
-		{.color = {.float32 = {0.0f,0.5f,0.5f,1.0f}}},
-		{.depthStencil = {.depth = 1.0,.stencil = 0}}
-	};
+    VkSubmitInfo submitInfo = {0};
 
-	VkRenderPassBeginInfo renderPassBeginInfo = {0};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = &g_semaphoreImageAvailableArr[currentFrame];
+    submitInfo.pWaitDstStageMask = &pipelineStageFlags;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &g_CommandBuffers[imageIndex];
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &g_semaphoreRenderFinishedArr[currentFrame];
 
-	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassBeginInfo.renderPass = g_RenderPass;
-	renderPassBeginInfo.framebuffer = g_FrameBuffers[imageIndex];
-
-	VkOffset2D offset = { 0, 0 };
-	VkExtent2D extent= { g_Width, g_Height };
-	VkRect2D rectangle = { offset, extent };
-	renderPassBeginInfo.renderArea = rectangle;
-	renderPassBeginInfo.clearValueCount = 2;
-	renderPassBeginInfo.pClearValues = clearValue;
-
-	pfn_vkCmdBeginRenderPass(g_CommandBuffers[currentFrame], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-    pfn_vkCmdBindPipeline(g_CommandBuffers[currentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS, g_Pipeline);
-
-    pfn_vkCmdBindDescriptorSets(g_CommandBuffers[currentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS, g_PipelineLayout, 0, 1, g_DescriptorSets, 0, NULL);
-
-    VkBuffer vertexBuffers[] = {g_VertexBuffer};
-
-    VkDeviceSize offsets[] = {0};
-
-    pfn_vkCmdBindVertexBuffers( g_CommandBuffers[currentFrame], 0, 1, vertexBuffers, offsets );
-
-    pfn_vkCmdDraw(g_CommandBuffers[currentFrame], 3, 1, 0, 0);
-
-	pfn_vkCmdEndRenderPass(g_CommandBuffers[currentFrame]);
-
-	pfn_vkEndCommandBuffer(g_CommandBuffers[currentFrame]);
-
-	VkPipelineStageFlags pipelineStageFlags = { VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT };
-
-	VkQueue graphicsQueue = 0;
-
-	pfn_vkGetDeviceQueue(g_LogicalDevice,0,0,&graphicsQueue);
-
-	VkSubmitInfo submitInfo = {0};
-
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &g_semaphoreImageAvailableArr[currentFrame];
-	submitInfo.pWaitDstStageMask = &pipelineStageFlags;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &g_CommandBuffers[imageIndex];
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &g_semaphoreRenderFinishedArr[currentFrame];
-
-	pfn_vkQueueSubmit( g_GraphicsQueue, 1, &submitInfo, fenceArr[currentFrame]);
+    pfn_vkQueueSubmit( g_GraphicsQueue, 1, &submitInfo, fenceArr[currentFrame]);
 
     if( result != VK_SUCCESS)
     {
@@ -3108,17 +3113,17 @@ void renderVulkan()
         //TODO
     }
 
-	VkPresentInfoKHR presentInfo = {0};
-	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentInfo.pNext = NULL;
-	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &g_semaphoreRenderFinishedArr[currentFrame];
-	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = &g_SwapChain;
-	presentInfo.pImageIndices = &imageIndex;
-	presentInfo.pResults = NULL;
+    VkPresentInfoKHR presentInfo = {0};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.pNext = NULL;
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = &g_semaphoreRenderFinishedArr[currentFrame];
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = &g_SwapChain;
+    presentInfo.pImageIndices = &imageIndex;
+    presentInfo.pResults = NULL;
 
-	pfn_vkQueuePresentKHR(g_GraphicsQueue, &presentInfo);
+    pfn_vkQueuePresentKHR(g_GraphicsQueue, &presentInfo);
 
     currentFrame = (currentFrame + 1) % SWAP_CHAIN_IMAGE_COUNT;
 }
