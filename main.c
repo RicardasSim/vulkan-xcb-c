@@ -3152,7 +3152,7 @@ int main(int argc, char **argv)
     xcb_intern_atom_reply_t *atomReply = NULL;
     char *title = "Triangle";
     xcb_generic_event_t *event;
-    xcb_key_press_event_t *keyPressEvent;
+    xcb_key_press_event_t *keyEvent;
 
     if(!parseOptions(argc, argv))
     {
@@ -3383,9 +3383,9 @@ int main(int argc, char **argv)
 
                 case XCB_KEY_PRESS:
 
-                    keyPressEvent = (xcb_key_press_event_t*)event;
+                    keyEvent = (xcb_key_press_event_t*)event;
 
-                    switch (keyPressEvent->detail)
+                    switch (keyEvent->detail)
                     {
                         case 0x9:	//Esc
 
@@ -3395,7 +3395,23 @@ int main(int argc, char **argv)
 
                         case 0x18:	//Q
 
-                            if (keyPressEvent->state & XCB_MOD_MASK_CONTROL) g_Quit = true;	//Ctrl+Q
+                            if (keyEvent->state & XCB_MOD_MASK_CONTROL) g_Quit = true;	//Ctrl+Q
+
+                            break;
+
+                        case 0x19:  //W
+
+                            break;
+
+                        case 0x26:  //A
+
+                            break;
+
+                        case 0x27:  //S
+
+                            break;
+
+                        case 0x28:  //D
 
                             break;
 
@@ -3405,6 +3421,33 @@ int main(int argc, char **argv)
 
                     break;
 
+                case XCB_KEY_RELEASE:
+
+                    keyEvent = (xcb_key_press_event_t*)event;
+
+                    switch (keyEvent->detail)
+                    {
+                        case 0x19:  //W
+
+                            break;
+
+                        case 0x26:  //A
+
+                            break;
+
+                        case 0x27:  //S
+
+                            break;
+
+                        case 0x28:  //D
+
+                            break;
+
+                        default:
+                            break;
+                    }
+
+                    break;
 
                 case XCB_MOTION_NOTIFY:
 
