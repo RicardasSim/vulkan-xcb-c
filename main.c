@@ -3090,10 +3090,6 @@ void renderVulkan()
 
     VkPipelineStageFlags pipelineStageFlags = { VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT };
 
-    VkQueue graphicsQueue = 0;
-
-    pfn_vkGetDeviceQueue(g_LogicalDevice,0,0,&graphicsQueue);
-
     VkSubmitInfo submitInfo = {0};
 
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
