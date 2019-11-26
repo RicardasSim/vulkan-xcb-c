@@ -424,7 +424,8 @@ bool parseOptions(int argc, char **argv)
                     }
                     else
                     {
-                        printErrorMsg("requested physical device parameter not valid\n");
+                        printErrorMsg("requested physical device number must be greater than 0\n");
+
                         return false;
                     }
                     break;
