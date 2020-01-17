@@ -3194,7 +3194,7 @@ int main(int argc, char **argv)
 
     if (connection == NULL)
     {
-        printErrorMsg("can't connect to an X server.\n");
+        printErrorMsg("can't connect to X server.\n");
 
         if (closeLibrary(libHandle))
         {
@@ -3204,7 +3204,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    printInfoMsg("connect to an X server OK.\n");
+    printInfoMsg("connect to X server OK.\n");
 
     screenIter = xcb_setup_roots_iterator(xcb_get_setup(connection));
 
