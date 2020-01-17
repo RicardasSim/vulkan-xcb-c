@@ -1969,6 +1969,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
                 printf("\t%s\n",str_VkPresentModeKHR(presentModes[i]));
             }
 
+            //here g_PresentMode is VK_PRESENT_MODE_FIFO_KHR
+
             //choose SwapChain Present Mode
 
             for (uint32_t i = 0; i < presentModeCount; ++i)
@@ -1976,8 +1978,10 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
                 if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR)
                 {
                     g_PresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+                    break;
                 }
-                else if (presentModes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR)
+
+                if (presentModes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR)
                 {
                     g_PresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
                 }
