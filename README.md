@@ -19,3 +19,14 @@ camera move
 triangle rotation  
 support resize
 
+**Build:**
+
+make
+
+debug version:
+
+make debug
+
+build shaders:
+
+./build_shaders.sh
