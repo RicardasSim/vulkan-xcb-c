@@ -16,6 +16,7 @@
 #include <xcb/xcb.h>
 #include <ctype.h>
 #include <math.h>
+#include <stddef.h>
 #include "linmath.h"
 
 #define VK_USE_PLATFORM_XCB_KHR
@@ -2822,7 +2823,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         vertexInputAttributeDescriptions[1].location = 1;
         vertexInputAttributeDescriptions[1].binding = 0;
         vertexInputAttributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        vertexInputAttributeDescriptions[1].offset = 4 * sizeof(float);
+        vertexInputAttributeDescriptions[1].offset = offsetof( Vertex, r );
 
         VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = {0};
 
