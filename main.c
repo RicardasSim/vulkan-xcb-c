@@ -57,6 +57,11 @@ if (pfn_##name == NULL) \
 
 #define SWAP_CHAIN_IMAGE_COUNT 2
 
+#define COLOR_RESET "\x1B[0m"
+#define COLOR_RED "\x1B[31m"
+#define COLOR_GREEN "\x1B[32m"
+#define COLOR_YELLOW "\x1B[33m"
+
 int g_Width = INIT_WIDTH;
 int g_Height = INIT_HEIGHT;
 
@@ -302,7 +307,7 @@ void printInfoMsg(const char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    printf("INFO: ");
+    printf( COLOR_GREEN "INFO: " COLOR_RESET );
     vprintf(format, args);
     va_end(args);
 }
@@ -317,7 +322,7 @@ void printErrorMsg(const char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    printf("ERROR: ");
+    printf( COLOR_RED "ERROR: " COLOR_RESET );
     vprintf(format, args);
     va_end(args);
 }
@@ -332,7 +337,7 @@ void printWarningMsg(const char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    printf("WARNING: ");
+    printf( COLOR_YELLOW "WARNING: " COLOR_RESET );
     vprintf(format, args);
     va_end(args);
 }
