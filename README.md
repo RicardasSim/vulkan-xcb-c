@@ -14,11 +14,6 @@ Learning Vulkan API
 
 ![alt text](https://github.com/RicardasSim/vulkan-xcb-c/blob/master/screenshot-1.jpg)
 
-**TODO:**  
-camera move  
-triangle rotation  
-support resize
-
 **Build:**
 
 make

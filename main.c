@@ -2638,7 +2638,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
     printInfoMsg("allocate Command Buffers OK.\n");
 
-    //load vertex buffer
+    //load vertex shader
     {
         FILE *fp;
         size_t fileSize;
@@ -2719,9 +2719,9 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         free(vertShaderCode);
     }
 
-    printInfoMsg("load vertex buffer OK.\n");
+    printInfoMsg("load vertex shader OK.\n");
 
-    //load fragment buffer
+    //load fragment shader
     {
         FILE *fp;
         size_t fileSize;
@@ -2782,18 +2782,18 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
         fclose(fp);
 
-        VkShaderModuleCreateInfo vertexShaderCreateInfo = {0};
+        VkShaderModuleCreateInfo fragmentShaderCreateInfo = {0};
 
-        vertexShaderCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        vertexShaderCreateInfo.codeSize = fileSize;
-        vertexShaderCreateInfo.pCode = (uint32_t*) fragShaderCode;
+        fragmentShaderCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        fragmentShaderCreateInfo.codeSize = fileSize;
+        fragmentShaderCreateInfo.pCode = (uint32_t*) fragShaderCode;
 
         VkResult result = pfn_vkCreateShaderModule(g_LogicalDevice,
-            &vertexShaderCreateInfo,NULL,&g_fragShaderModule);
+            &fragmentShaderCreateInfo,NULL,&g_fragShaderModule);
 
         if (result != VK_SUCCESS)
         {
-            printErrorMsg( "failed to create vertex shader module.\n");
+            printErrorMsg( "failed to create fragment shader module.\n");
             free(fragShaderCode);
             return false;
         }
@@ -2801,7 +2801,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         free(fragShaderCode);
     }
 
-    printInfoMsg("load fragment buffer OK.\n");
+    printInfoMsg("load fragment shader OK.\n");
 
     //descriptor buffer
     {
