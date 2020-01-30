@@ -145,6 +145,8 @@ PFN_vkQueueSubmit pfn_vkQueueSubmit = NULL;
 PFN_vkQueuePresentKHR pfn_vkQueuePresentKHR = NULL;
 PFN_vkCmdDraw pfn_vkCmdDraw = NULL;
 PFN_vkDeviceWaitIdle pfn_vkDeviceWaitIdle = NULL;
+PFN_vkCmdCopyBuffer pfn_vkCmdCopyBuffer = NULL;
+PFN_vkQueueWaitIdle pfn_vkQueueWaitIdle = NULL;
 
 #ifdef DEBUG
 struct sUserData{
@@ -217,11 +219,13 @@ uint32_t g_DeviceExtArrayCount = 0;
 
 int32_t g_GraphicsQueueFamilyIndex = -1;
 int32_t g_PresentQueueFamilyIndex = -1;
+int32_t g_TransferQueueFamilyIndex = -1;
 
 VkDevice g_LogicalDevice = NULL;
 
 VkQueue g_GraphicsQueue = VK_NULL_HANDLE;
 VkQueue g_PresentQueue = VK_NULL_HANDLE;
+VkQueue g_TransferQueue = VK_NULL_HANDLE;
 
 VkSemaphore g_semaphoreImageAvailableArr[SWAP_CHAIN_IMAGE_COUNT] = {NULL};
 VkSemaphore g_semaphoreRenderFinishedArr[SWAP_CHAIN_IMAGE_COUNT] = {NULL};
@@ -255,6 +259,9 @@ typedef struct{
 
 VkBuffer g_VertexBuffer = NULL;
 VkDeviceMemory g_VertexBufferDeviceMemory = VK_NULL_HANDLE;
+
+VkBuffer g_StagingBuffer = NULL;
+VkDeviceMemory g_StagingBufferDeviceMemory = VK_NULL_HANDLE;
 
 VkCommandPool g_CommandPool = 0;
 VkCommandBuffer *g_CommandBuffers = NULL;
@@ -726,6 +733,18 @@ void shutdownVulkan()
     {
         pfn_vkDestroyBuffer(g_LogicalDevice,g_VertexBuffer,NULL);
         printInfoMsg("destroy vertex buffer\n");
+    }
+
+    if (g_StagingBuffer && pfn_vkDestroyBuffer)
+    {
+        pfn_vkDestroyBuffer(g_LogicalDevice,g_StagingBuffer,NULL);
+        printInfoMsg("destroy staging buffer\n");
+    }
+
+    if (g_StagingBufferDeviceMemory && pfn_vkFreeMemory)
+    {
+        pfn_vkFreeMemory(g_LogicalDevice, g_StagingBufferDeviceMemory, NULL);
+        printInfoMsg("free staging buffer memory\n");
     }
 
     for (uint32_t i = 0; i < g_SwapChainImageCount; ++i)
@@ -1635,6 +1654,19 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
             }
         }
 
+        /*
+         find matching index for g_TransferQueueFamilyIndex, using first one at the moment
+        */
+
+        for (uint32_t i = 0; i<queueFamilyCount; ++i)
+        {
+            if (familyProperties[i].queueFlags & VK_QUEUE_TRANSFER_BIT)
+            {
+                g_TransferQueueFamilyIndex = i;
+                break;
+            }
+        }
+
         free(familyProperties);
     }
 
@@ -1650,8 +1682,15 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         return false;
     }
 
+    if (g_TransferQueueFamilyIndex == -1)
+    {
+        printErrorMsg("no Queue Family with Transfer Bit.\n");
+        return false;
+    }
+
     printInfoMsg("Graphics Bit on Queue Family [%d]\n", g_GraphicsQueueFamilyIndex);
     printInfoMsg("Present Queue on Queue Family [%d]\n", g_PresentQueueFamilyIndex);
+    printInfoMsg("Transfer Queue on Queue Family [%d]\n", g_TransferQueueFamilyIndex);
 
     //create logical device
     {
@@ -1768,6 +1807,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     GET_DEVICE_LEVEL_FUN_ADDR(vkQueuePresentKHR);
     GET_DEVICE_LEVEL_FUN_ADDR(vkCmdDraw);
     GET_DEVICE_LEVEL_FUN_ADDR(vkDeviceWaitIdle);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkCmdCopyBuffer);
+    GET_DEVICE_LEVEL_FUN_ADDR(vkQueueWaitIdle);
 
     //get device queues
     pfn_vkGetDeviceQueue(g_LogicalDevice, g_GraphicsQueueFamilyIndex, 0, &g_GraphicsQueue);
@@ -1780,6 +1821,8 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
     {
         g_PresentQueue = g_GraphicsQueue;
     }
+
+    pfn_vkGetDeviceQueue(g_LogicalDevice, g_TransferQueueFamilyIndex, 0, &g_TransferQueue);
 
     //create semaphores
     {
@@ -2252,23 +2295,130 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
     printInfoMsg("create framebuffer OK.\n");
 
+    static const Vertex vertices[] = {
+	    {0.0f,-0.433f,0.0f,1.0f,1.0f,0.0f,0.0f},
+	    {0.5f,0.433f,0.0f,1.0f,0.0f,1.0f,0.0f},
+	    {-0.5f,0.433f,0.0f,1.0f,0.0f,0.0f,1.0f}
+	};
+
+    uint32_t numOfVertices = sizeof vertices/sizeof vertices[0];
+
+    printInfoMsg("numOfVertices: %zu\n", numOfVertices);
+
+    //staging buffer
+    {
+        VkBufferCreateInfo stagingBufferCreateInfo ={0};
+
+        stagingBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        stagingBufferCreateInfo.size = sizeof vertices;
+        stagingBufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        stagingBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        stagingBufferCreateInfo.queueFamilyIndexCount = 0;
+	    stagingBufferCreateInfo.pQueueFamilyIndices = NULL;
+
+	    VkResult result = pfn_vkCreateBuffer(g_LogicalDevice,
+            &stagingBufferCreateInfo, NULL, &g_StagingBuffer);
+
+	    if (result != VK_SUCCESS)
+        {
+		    printErrorMsg("staging buffer, vkCreateBuffer().\n");
+		    return false;
+        }
+
+        VkMemoryRequirements stagingBufferMemoryRequirements = {0};
+
+        pfn_vkGetBufferMemoryRequirements(g_LogicalDevice,
+            g_StagingBuffer, &stagingBufferMemoryRequirements);
+
+        printInfoMsg("Staging Buffer Memory Requirements size: %zu\n",
+            stagingBufferMemoryRequirements.size );
+        printInfoMsg("Staging Buffer Memory Requirements alignment: %zu\n",
+            stagingBufferMemoryRequirements.alignment );
+
+        VkMemoryAllocateInfo memoryAllocateInfo = {0};
+
+        memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        memoryAllocateInfo.pNext = NULL;
+        memoryAllocateInfo.allocationSize = stagingBufferMemoryRequirements.size;
+        memoryAllocateInfo.memoryTypeIndex = 0;
+
+        VkPhysicalDeviceMemoryProperties memoryProperties;
+
+        pfn_vkGetPhysicalDeviceMemoryProperties(g_SelectedPhysicalDevice, &memoryProperties);
+
+        bool flag = false;
+
+        for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; ++i)
+        {
+            VkMemoryType memoryType = memoryProperties.memoryTypes[i];
+
+            if (
+                (stagingBufferMemoryRequirements.memoryTypeBits & (1 << i)) &&
+                (memoryType.propertyFlags & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                                        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
+            )
+            {
+                memoryAllocateInfo.memoryTypeIndex = i;
+                flag = true;
+            }
+        }
+
+        if (!flag)
+        {
+		    printErrorMsg("staging buffer, failed to find suitable memory type!\n");
+		    return false;
+        }
+
+        result = pfn_vkAllocateMemory(g_LogicalDevice,
+            &memoryAllocateInfo, NULL, &g_StagingBufferDeviceMemory);
+
+        if (result != VK_SUCCESS)
+        {
+            printErrorMsg("unable to allocate device memory (3)\n");
+            return false;
+        }
+
+        printInfoMsg("staging buffer vkAllocateMemory OK.\n");
+
+        result = pfn_vkBindBufferMemory(g_LogicalDevice,
+            g_StagingBuffer, g_StagingBufferDeviceMemory, 0);
+
+	    if (result != VK_SUCCESS)
+        {
+            printErrorMsg("staging buffer vkBindBufferMemory().\n");
+            return false;
+        }
+
+        printInfoMsg("staging buffer vkBindBufferMemory OK.\n");
+
+        void* mapMem;
+
+        result = pfn_vkMapMemory(g_LogicalDevice,
+            g_StagingBufferDeviceMemory, 0, VK_WHOLE_SIZE, 0, &mapMem);
+
+        if (result != VK_SUCCESS)
+        {
+            printErrorMsg("staging buffer vkMapMemory.\n");
+            return false;
+        }
+
+        printInfoMsg("staging buffer vkMapMemory OK.\n");
+
+        memcpy(mapMem,vertices,sizeof vertices);
+
+        pfn_vkUnmapMemory(g_LogicalDevice, g_StagingBufferDeviceMemory);
+
+    }
+
+    printInfoMsg("staging buffer OK.\n");
+
     //vertex buffer
     {
-        static const Vertex vertices[] = {
-	        {0.0f,-0.433f,0.0f,1.0f,1.0f,0.0f,0.0f},
-	        {0.5f,0.433f,0.0f,1.0f,0.0f,1.0f,0.0f},
-	        {-0.5f,0.433f,0.0f,1.0f,0.0f,0.0f,1.0f}
-	    };
-
-        uint32_t numOfVertices = sizeof vertices/sizeof vertices[0];
-
-        printInfoMsg("numOfVertices: %zu\n", numOfVertices);
-
         VkBufferCreateInfo vertexBufferCreateInfo ={0};
 
         vertexBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	    vertexBufferCreateInfo.size = sizeof vertices;
-	    vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	    vertexBufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 	    vertexBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	    vertexBufferCreateInfo.queueFamilyIndexCount = 0;
 	    vertexBufferCreateInfo.pQueueFamilyIndices = NULL;
@@ -2311,8 +2461,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
             if (
                 (vertexBufferMemoryRequirements.memoryTypeBits & (1 << i)) &&
-                (memoryType.propertyFlags & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                                        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
+                (memoryType.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
             )
             {
                 memoryAllocateInfo.memoryTypeIndex = i;
@@ -2348,22 +2497,92 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
         printInfoMsg("vertex buffer vkBindBufferMemory OK.\n");
 
-        void* mapMem;
+    }
 
-        result = pfn_vkMapMemory(g_LogicalDevice,
-            g_VertexBufferDeviceMemory, 0, VK_WHOLE_SIZE, 0, &mapMem);
+    printInfoMsg("vertex buffer OK.\n");
+
+    //copy the data from the staging buffer to the vertex buffer
+    {
+        VkCommandPool commandPool = 0;
+
+        VkCommandPoolCreateInfo commandPoolCreateInfo = {0};
+
+        commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+
+        VkResult result  = pfn_vkCreateCommandPool(g_LogicalDevice, &commandPoolCreateInfo, NULL, &commandPool);
 
         if (result != VK_SUCCESS)
         {
-            printErrorMsg("vertex buffer vkMapMemory.\n");
+            printErrorMsg("cannot create CommandPool for copying.\n");
             return false;
         }
 
-        printInfoMsg("vertex buffer vkMapMemory OK.\n");
+        VkCommandBuffer commandBuffer = NULL;
 
-        memcpy(mapMem,vertices,sizeof vertices);
+        VkCommandBufferAllocateInfo commandBufferAllocateInfo = {0};
 
-        pfn_vkUnmapMemory(g_LogicalDevice, g_VertexBufferDeviceMemory);
+        commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        commandBufferAllocateInfo.commandPool = commandPool;
+        commandBufferAllocateInfo.commandBufferCount = 1;
+
+        result = pfn_vkAllocateCommandBuffers(g_LogicalDevice, &commandBufferAllocateInfo, &commandBuffer);
+
+        if (result != VK_SUCCESS)
+        {
+			printErrorMsg("cannot allocate Command Buffers (copying).\n");
+			return false;
+		}
+
+        VkCommandBufferBeginInfo commandBufferBeginInfo = {0};
+        commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+        pfn_vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
+
+        VkBufferCopy bufferCopy = {0};
+        bufferCopy.srcOffset = 0;
+        bufferCopy.dstOffset = 0;
+        bufferCopy.size = sizeof vertices;
+
+        pfn_vkCmdCopyBuffer( commandBuffer, g_StagingBuffer, g_VertexBuffer, 1, &bufferCopy);
+
+        pfn_vkEndCommandBuffer(commandBuffer);
+
+        VkSubmitInfo submitInfo = {0};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffer;
+
+        pfn_vkQueueSubmit(g_TransferQueue, 1, &submitInfo, VK_NULL_HANDLE);
+        pfn_vkQueueWaitIdle(g_TransferQueue);
+
+        if(commandBuffer)
+        {
+            pfn_vkFreeCommandBuffers(g_LogicalDevice, commandPool, 1, &commandBuffer);
+            printInfoMsg("free commandBuffer (copying)\n");
+        }
+
+        if (commandPool && pfn_vkDestroyCommandPool)
+        {
+            pfn_vkDestroyCommandPool( g_LogicalDevice, commandPool, NULL );
+            printInfoMsg("destroy commandPool (copying)\n");
+        }
+
+        if (g_StagingBuffer && pfn_vkDestroyBuffer)
+        {
+            pfn_vkDestroyBuffer(g_LogicalDevice,g_StagingBuffer,NULL);
+            g_StagingBuffer = NULL;
+            printInfoMsg("destroy staging buffer\n");
+        }
+
+        if (g_StagingBufferDeviceMemory && pfn_vkFreeMemory)
+        {
+            pfn_vkFreeMemory(g_LogicalDevice, g_StagingBufferDeviceMemory, NULL);
+            g_StagingBufferDeviceMemory = VK_NULL_HANDLE;
+            printInfoMsg("free staging buffer memory\n");
+        }
 
     }
 
