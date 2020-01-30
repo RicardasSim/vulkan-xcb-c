@@ -12,7 +12,7 @@ Learning Vulkan API
 
  Big thanks to ##C IRC channel on Freenode !!!
 
-![alt text](https://github.com/RicardasSim/vulkan-xcb-c/blob/master/screenshot-1.jpg)
+![alt text](screenshot-2.jpg)
 
 **Build:**
 
