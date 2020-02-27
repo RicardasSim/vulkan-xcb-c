@@ -470,7 +470,7 @@ char* str_VkFormat(VkFormat val)
             return "VK_FORMAT_PVRTC2_4BPP_SRGB_BLOCK_IMG";
 
         default:
-            return "Unhandled VkFormat value";            
+            return "Unhandled VkFormat value";
     }
 }
 
@@ -640,6 +640,184 @@ char* str_VkObjectType(VkObjectType val)
         default:
             return "Unhandled VkObjectType value";
     }
+}
+
+void print_VkSurfaceTransformFlagBitsKHR(VkSurfaceTransformFlagBitsKHR val)
+{
+
+    uint32_t pos = 0x1;
+
+    while( val )
+    {
+
+        if( val & 1 )
+        {
+
+            switch(pos)
+            {
+            case VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR:
+                printf("\tVK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR\n");
+                break;
+
+            case VK_SURFACE_TRANSFORM_ROTATE_90_BIT_KHR:
+                printf("\tVK_SURFACE_TRANSFORM_ROTATE_90_BIT_KHR\n");
+                break;
+
+            case VK_SURFACE_TRANSFORM_ROTATE_180_BIT_KHR:
+                printf("\tVK_SURFACE_TRANSFORM_ROTATE_180_BIT_KHR\n");
+                break;
+
+            case VK_SURFACE_TRANSFORM_ROTATE_270_BIT_KHR:
+                printf("\tVK_SURFACE_TRANSFORM_ROTATE_270_BIT_KHR\n");
+                break;
+
+            case VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_BIT_KHR:
+                printf("\tVK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_BIT_KHR\n");
+                break;
+
+            case VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_90_BIT_KHR:
+                printf("\tVK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_90_BIT_KHR\n");
+                break;
+
+            case VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_180_BIT_KHR:
+                printf("\tVK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_180_BIT_KHR\n");
+                break;
+
+            case VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_270_BIT_KHR:
+                printf("\tVK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_270_BIT_KHR\n");
+                break;
+
+            case VK_SURFACE_TRANSFORM_INHERIT_BIT_KHR:
+                printf("\tVK_SURFACE_TRANSFORM_INHERIT_BIT_KHR\n");
+                break;
+
+            default:
+
+                printf("\tUnhandled value\n");
+
+                break;
+            }
+
+        }
+
+        pos<<=1;
+        val>>=1;
+    }
+
+}
+
+void print_VkCompositeAlphaFlagBitsKHR(VkCompositeAlphaFlagBitsKHR val)
+{
+
+    uint32_t pos = 0x1;
+
+    while( val )
+    {
+
+        if( val & 1 )
+        {
+
+            switch(pos)
+            {
+            case VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR:
+                printf("\tVK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR\n");
+                break;
+
+            case VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR:
+                printf("\tVK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR\n");
+                break;
+
+            case VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR:
+                printf("\tVK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR\n");
+                break;
+
+            case VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR:
+                printf("\tVK_COMPOSITE_ALPHA_INHERIT_BIT_KHR\n");
+                break;
+
+            default:
+
+                printf("\tUnhandled value\n");
+
+                break;
+            }
+
+        }
+
+        pos<<=1;
+        val>>=1;
+
+    }
+
+}
+
+void print_VkImageUsageFlagBits(VkImageUsageFlagBits val)
+{
+
+    uint32_t pos = 0x1;
+
+    while( val )
+    {
+
+        if( val & 1 )
+        {
+
+            switch(pos)
+            {
+            case VK_IMAGE_USAGE_TRANSFER_SRC_BIT:
+                printf("\tVK_IMAGE_USAGE_TRANSFER_SRC_BIT\n");
+                break;
+
+            case VK_IMAGE_USAGE_TRANSFER_DST_BIT:
+                printf("\tVK_IMAGE_USAGE_TRANSFER_DST_BIT\n");
+                break;
+
+            case VK_IMAGE_USAGE_SAMPLED_BIT:
+                printf("\tVK_IMAGE_USAGE_SAMPLED_BIT\n");
+                break;
+
+            case VK_IMAGE_USAGE_STORAGE_BIT:
+                printf("\tVK_IMAGE_USAGE_STORAGE_BIT\n");
+                break;
+
+            case VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT:
+                printf("\tVK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT\n");
+                break;
+
+            case VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT:
+                printf("\tVK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT\n");
+                break;
+
+            case VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT:
+                printf("\tVK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT\n");
+                break;
+
+            case VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT:
+                printf("\tVK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT\n");
+                break;
+
+            case VK_IMAGE_USAGE_SHADING_RATE_IMAGE_BIT_NV:
+                printf("\tVK_IMAGE_USAGE_SHADING_RATE_IMAGE_BIT_NV\n");
+                break;
+
+            case VK_IMAGE_USAGE_FRAGMENT_DENSITY_MAP_BIT_EXT:
+                printf("\tVK_IMAGE_USAGE_FRAGMENT_DENSITY_MAP_BIT_EXT\n");
+                break;
+
+            default:
+
+                printf("\tUnhandled value\n");
+
+                break;
+            }
+
+        }
+
+        pos<<=1;
+        val>>=1;
+
+    }
+
 }
 
 #endif // ENUM_STR_HELPER_H

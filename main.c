@@ -1916,10 +1916,19 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         printInfoMsg("surfaceCapabilities.maxImageExtent.width %d\n",surfaceCapabilities.maxImageExtent.width);
         printInfoMsg("surfaceCapabilities.maxImageExtent.height %d\n",surfaceCapabilities.maxImageExtent.height);
         printInfoMsg("surfaceCapabilities.maxImageArrayLayers %d\n",surfaceCapabilities.maxImageArrayLayers);
-        printInfoMsg("surfaceCapabilities.supportedTransforms %08x\n",surfaceCapabilities.supportedTransforms);
-        printInfoMsg("surfaceCapabilities.currentTransform %08x\n",surfaceCapabilities.currentTransform);
-        printInfoMsg("surfaceCapabilities.supportedCompositeAlpha %08x\n",surfaceCapabilities.supportedCompositeAlpha);
-        printInfoMsg("surfaceCapabilities.supportedUsageFlags %08x\n",surfaceCapabilities.supportedUsageFlags);
+
+        printInfoMsg("surfaceCapabilities.supportedTransforms:\n");
+        print_VkSurfaceTransformFlagBitsKHR(surfaceCapabilities.supportedTransforms);
+
+        printInfoMsg("surfaceCapabilities.currentTransform:\n");
+        print_VkSurfaceTransformFlagBitsKHR(surfaceCapabilities.currentTransform);
+
+        printInfoMsg("surfaceCapabilities.supportedCompositeAlpha:\n");
+        print_VkCompositeAlphaFlagBitsKHR(surfaceCapabilities.supportedCompositeAlpha);
+
+        printInfoMsg("surfaceCapabilities.supportedUsageFlags:\n");
+        print_VkImageUsageFlagBits(surfaceCapabilities.supportedUsageFlags);
+
     }
 
     //get surface formats
