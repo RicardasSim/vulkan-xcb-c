@@ -3278,7 +3278,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
         g_DescriptorSets = malloc(sizeof(VkDescriptorSet) * descriptorSetsCount);
 
-        if (!descriptorSetsCount)
+        if (!g_DescriptorSets)
         {
 	        printErrorMsg("unable to allocate memory (21)\n");
 	        return false;
