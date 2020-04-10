@@ -2381,18 +2381,20 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
         bool flag = false;
 
+        VkMemoryPropertyFlags properties_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
         for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; ++i)
         {
             VkMemoryType memoryType = memoryProperties.memoryTypes[i];
 
-            if (
-                (stagingBufferMemoryRequirements.memoryTypeBits & (1 << i)) &&
-                (memoryType.propertyFlags & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                                        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
-            )
+            if( stagingBufferMemoryRequirements.memoryTypeBits & (1 << i) )
             {
-                memoryAllocateInfo.memoryTypeIndex = i;
-                flag = true;
+                if ( (memoryType.propertyFlags & properties_flags) == properties_flags )
+                {
+                    memoryAllocateInfo.memoryTypeIndex = i;
+                    flag = true;
+                    break;
+                }
             }
         }
 
@@ -2488,17 +2490,20 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
         bool flag = false;
 
+        VkMemoryPropertyFlags properties_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
         for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; ++i)
         {
             VkMemoryType memoryType = memoryProperties.memoryTypes[i];
 
-            if (
-                (vertexBufferMemoryRequirements.memoryTypeBits & (1 << i)) &&
-                (memoryType.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-            )
+            if( vertexBufferMemoryRequirements.memoryTypeBits & (1 << i) )
             {
-                memoryAllocateInfo.memoryTypeIndex = i;
-                flag = true;
+                if ( (memoryType.propertyFlags & properties_flags) == properties_flags )
+                {
+                    memoryAllocateInfo.memoryTypeIndex = i;
+                    flag = true;
+                    break;
+                }   
             }
         }
 
@@ -2662,18 +2667,20 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
         bool flag = false;
 
+        VkMemoryPropertyFlags properties_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
         for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; ++i)
         {
             VkMemoryType memoryType = memoryProperties.memoryTypes[i];
 
-            if (
-                (stagingBufferMemoryRequirements.memoryTypeBits & (1 << i)) &&
-                (memoryType.propertyFlags & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                                        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
-            )
+            if( stagingBufferMemoryRequirements.memoryTypeBits & (1 << i) )
             {
-                memoryAllocateInfo.memoryTypeIndex = i;
-                flag = true;
+                if ( (memoryType.propertyFlags & properties_flags) == properties_flags )
+                {
+                    memoryAllocateInfo.memoryTypeIndex = i;
+                    flag = true;
+                    break;
+                }   
             }
         }
 
@@ -2768,17 +2775,20 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
         bool flag = false;
 
+        VkMemoryPropertyFlags properties_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
         for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; ++i)
         {
             VkMemoryType memoryType = memoryProperties.memoryTypes[i];
 
-            if (
-                (indexBufferMemoryRequirements.memoryTypeBits & (1 << i)) &&
-                (memoryType.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-            )
+            if( indexBufferMemoryRequirements.memoryTypeBits & (1 << i) )
             {
-                memoryAllocateInfo.memoryTypeIndex = i;
-                flag = true;
+                if ( (memoryType.propertyFlags & properties_flags) == properties_flags )
+                {
+                    memoryAllocateInfo.memoryTypeIndex = i;
+                    flag = true;
+                    break;
+                }   
             }
         }
 
@@ -3159,17 +3169,20 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 
         bool flag = false;
 
+        VkMemoryPropertyFlags properties_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
         for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; ++i)
         {
             VkMemoryType memoryType = memoryProperties.memoryTypes[i];
-            if (
-                (descriptorBufferMemoryRequirements.memoryTypeBits & (1 << i)) &&
-                (memoryType.propertyFlags & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                    | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT ))
-            )
+
+            if( descriptorBufferMemoryRequirements.memoryTypeBits & (1 << i) )
             {
-                memoryAllocateInfo.memoryTypeIndex = i;
-                flag = true;
+                if ( (memoryType.propertyFlags & properties_flags) == properties_flags )
+                {
+                    memoryAllocateInfo.memoryTypeIndex = i;
+                    flag = true;
+                    break;
+                }   
             }
         }
 
