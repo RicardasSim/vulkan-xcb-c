@@ -3550,46 +3550,82 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
 void updateData()
 {
 
-    float aspectRatio = (float) g_Width / (float) g_Height;
-    float nearZ  = 0.1f;
-	float farZ   = 1000.0f;
-    float rangeOfZ = nearZ - farZ;
-    float fieldOfView = 45.0f;
-    //float tangentOfHalfFOV = (float) tanf(fieldOfView * TORAD * 0.5f);
-    float tVal = 1.0f / (float) tanf(fieldOfView * TORAD * 0.5f);
-
-    projectionMatrix[0][0]= tVal / aspectRatio; //1.0f / (tangentOfHalfFOV * aspectRatio);
+/*
+    projectionMatrix[0][0]= 1.0f / (aspectRatio * (float) tanf(fieldOfView / 2.0f * TORAD));
     projectionMatrix[0][1]=0;
     projectionMatrix[0][2]=0;
     projectionMatrix[0][3]=0;
     projectionMatrix[1][0]=0;
-    projectionMatrix[1][1]= tVal;   //1.0f / tangentOfHalfFOV;
+    projectionMatrix[1][1]= 1.0f / (float) tanf(fieldOfView / 2.0f * TORAD);
     projectionMatrix[1][2]=0;
     projectionMatrix[1][3]=0;
     projectionMatrix[2][0]=0;
     projectionMatrix[2][1]=0;
-    projectionMatrix[2][2]= (-nearZ - farZ ) / rangeOfZ;
-    projectionMatrix[2][3]= 2.0f * nearZ * farZ / rangeOfZ;
+    projectionMatrix[2][2]= (-nearZ - farZ ) / (nearZ - farZ);
+    projectionMatrix[2][3]= 1.0f;
     projectionMatrix[3][0]=0;
     projectionMatrix[3][1]=0;
-    projectionMatrix[3][2]=1;
+    projectionMatrix[3][2]= 2.0f * nearZ * farZ / (nearZ - farZ);
+    projectionMatrix[3][3]=0;
+
+    //-
+
+    projectionMatrix[0][0]= 1.0f / (aspectRatio * (float) tanf(fieldOfView / 2.0f * TORAD));
+    projectionMatrix[0][1]=0;
+    projectionMatrix[0][2]=0;
+    projectionMatrix[0][3]=0;
+    projectionMatrix[1][0]=0;
+    projectionMatrix[1][1]= 1.0f / (float) tanf(fieldOfView / 2.0f * TORAD);
+    projectionMatrix[1][2]=0;
+    projectionMatrix[1][3]=0;
+    projectionMatrix[2][0]=0;
+    projectionMatrix[2][1]=0;
+    projectionMatrix[2][2]= (nearZ + farZ) / (nearZ - farZ);
+    projectionMatrix[2][3]= -1.0f;
+    projectionMatrix[3][0]=0;
+    projectionMatrix[3][1]=0;
+    projectionMatrix[3][2]= 2.0f * nearZ * farZ / (nearZ - farZ);
+    projectionMatrix[3][3]=0;
+
+*/
+
+    float aspectRatio = (float) g_Width / (float) g_Height;
+    float nearZ  = 0.1f;
+	float farZ   = 1000.0f;
+    float fieldOfView = 45.0f;
+
+    projectionMatrix[0][0]= 1.0f / (aspectRatio * (float) tanf(fieldOfView / 2.0f * TORAD));
+    projectionMatrix[0][1]=0;
+    projectionMatrix[0][2]=0;
+    projectionMatrix[0][3]=0;
+    projectionMatrix[1][0]=0;
+    projectionMatrix[1][1]= 1.0f / (float) tanf(fieldOfView / 2.0f * TORAD);
+    projectionMatrix[1][2]=0;
+    projectionMatrix[1][3]=0;
+    projectionMatrix[2][0]=0;
+    projectionMatrix[2][1]=0;
+    projectionMatrix[2][2]= (-nearZ - farZ ) / (nearZ - farZ);
+    projectionMatrix[2][3]= 1.0f;
+    projectionMatrix[3][0]=0;
+    projectionMatrix[3][1]=0;
+    projectionMatrix[3][2]= 2.0f * nearZ * farZ / (nearZ - farZ);
     projectionMatrix[3][3]=0;
 
     static float vx = 0.0f;
     static float vy = 0.0f;
     static float vz = 0.0f;
 
-    viewMatrix[0][3] = vx;
-    viewMatrix[1][3] = vy;
-    viewMatrix[2][3] = vz;
+    viewMatrix[3][0] = vx;
+    viewMatrix[3][1] = vy;
+    viewMatrix[3][2] = vz;
 
     float x = 0.0f;
     float y = 0.0f;
     float z = 2.0f;
 
-    modelMatrix[0][3] = x;
-    modelMatrix[1][3] = y;
-    modelMatrix[2][3] = z;
+    modelMatrix[3][0] = x;
+    modelMatrix[3][1] = y;
+    modelMatrix[3][2] = z;
 
     void* data;
 

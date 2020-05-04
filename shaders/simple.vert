@@ -15,8 +15,7 @@ mat4 proj;
 
 void main() {
 
-    mat4 modelView = ubo.model * ubo.view;
-    gl_Position = pos * (modelView * ubo.proj);
+    gl_Position = ubo.proj * ubo.view * ubo.model * pos;
 
     fragColor = col;
 }
