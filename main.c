@@ -1748,7 +1748,7 @@ bool initVulkan(xcb_window_t wnd, xcb_connection_t *conn)
         deviceCreateInfo.queueCreateInfoCount = queueInfoCount;
         deviceCreateInfo.pQueueCreateInfos = queueCreateInfo;
         deviceCreateInfo.enabledLayerCount = g_DeviceLayersArrayCount;
-        if (g_DeviceExtArrayCount) deviceCreateInfo.ppEnabledLayerNames =
+        if (g_DeviceLayersArrayCount) deviceCreateInfo.ppEnabledLayerNames =
             (const char* const*) g_DeviceLayersArray;
         else deviceCreateInfo.ppEnabledLayerNames = NULL;
         deviceCreateInfo.enabledExtensionCount = g_DeviceExtArrayCount;
